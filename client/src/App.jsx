@@ -8,6 +8,7 @@ import BookingForm from './components/BookingForm';
 import BookingsPage from './pages/BookingsPage';
 import InboxPage from './pages/InboxPage';
 import InventoryPage from './pages/InventoryPage';
+import InventoryDetailPage from './pages/InventoryDetailPage';
 import ThemeToggle from './components/ThemeToggle';
 
 // --- DASHBOARD COMPONENT ---
@@ -84,6 +85,7 @@ export default function App() {
         <Route path="/bookings" element={<BookingsPage />} />
         <Route path="/inbox" element={<InboxPage />} />
         <Route path="/inventory" element={<InventoryPage />} />
+        <Route path="/inventory/:id" element={<InventoryDetailPage />} />
       </Routes>
     </BrowserRouter>
   );

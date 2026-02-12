@@ -169,10 +169,13 @@ app.get('/api/inbox/:workspaceId', async (req, res) => {
   }
 });
 
-// 5. GET Inventory List
+// 5. GET Inventory List (Sorts Alphabetically)
 app.get('/api/inventory/:workspaceId', async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM inventory WHERE workspace_id = $1', [req.params.workspaceId]);
+    const result = await pool.query(
+      'SELECT * FROM inventory WHERE workspace_id = $1 ORDER BY item_name ASC', 
+      [req.params.workspaceId]
+    );
     res.json(result.rows);
   } catch (err) {
     res.status(500).send(err.message);
