@@ -193,6 +193,24 @@ app.post('/api/inventory/:itemId/restock', async (req, res) => {
   }
 });
 
+// 7. PUT Update Inventory Item (Threshold & Target)
+app.put('/api/inventory/:id', async (req, res) => {
+  const { low_stock_threshold, target_capacity } = req.body;
+  try {
+    // Dynamic query to update either or both fields
+    await pool.query(
+      `UPDATE inventory 
+       SET low_stock_threshold = COALESCE($1, low_stock_threshold),
+           target_capacity = COALESCE($2, target_capacity)
+       WHERE id = $3`,
+      [low_stock_threshold, target_capacity, req.params.id]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
+});
+
 // Start Server
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
