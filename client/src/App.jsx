@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
 import { LayoutDashboard, Users, AlertTriangle, MessageSquare } from 'lucide-react';
-import BookingForm from './components/BookingForm'; // Import the new component
+import BookingForm from './components/BookingForm';
+import BookingsPage from './pages/BookingsPage';
 
 // --- DASHBOARD COMPONENT ---
 const Dashboard = () => {
@@ -30,7 +31,9 @@ const Dashboard = () => {
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <StatCard title="Upcoming Bookings" value={stats?.upcoming_bookings || 0} icon={Users} />
+        <Link to="/bookings">
+          <StatCard title="Upcoming Bookings" value={stats?.upcoming_bookings || 0} icon={Users} />
+        </Link>
         <StatCard title="Unread Messages" value={stats?.unread_messages || 0} icon={MessageSquare} />
         <StatCard title="Low Stock Alerts" value={stats?.low_stock_items || 0} icon={AlertTriangle} alert={(stats?.low_stock_items || 0) > 0} />
       </div>
@@ -59,6 +62,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Dashboard />} />
         <Route path="/book" element={<BookingForm />} />
+        <Route path="/bookings" element={<BookingsPage />} />
       </Routes>
     </BrowserRouter>
   );
