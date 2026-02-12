@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
 import { LayoutDashboard, Users, AlertTriangle, MessageSquare } from 'lucide-react';
 import BookingForm from './components/BookingForm';
 import BookingsPage from './pages/BookingsPage';
+import InboxPage from './pages/InboxPage';
 
 // --- DASHBOARD COMPONENT ---
 const Dashboard = () => {
@@ -11,7 +12,7 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    axios.get(`http://localhost:3000/api/dashboard/1`)
+    axios.get(`http://localhost:5000/api/dashboard/1`)
       .then(res => { setStats(res.data); setLoading(false); })
       .catch(err => { console.error(err); setLoading(false); });
   }, []);
@@ -34,7 +35,9 @@ const Dashboard = () => {
         <Link to="/bookings">
           <StatCard title="Upcoming Bookings" value={stats?.upcoming_bookings || 0} icon={Users} />
         </Link>
-        <StatCard title="Unread Messages" value={stats?.unread_messages || 0} icon={MessageSquare} />
+        <Link to="/inbox">
+          <StatCard title="Unread Messages" value={stats?.unread_messages || 0} icon={MessageSquare} />
+        </Link>
         <StatCard title="Low Stock Alerts" value={stats?.low_stock_items || 0} icon={AlertTriangle} alert={(stats?.low_stock_items || 0) > 0} />
       </div>
     </div>
@@ -63,6 +66,7 @@ export default function App() {
         <Route path="/" element={<Dashboard />} />
         <Route path="/book" element={<BookingForm />} />
         <Route path="/bookings" element={<BookingsPage />} />
+        <Route path="/inbox" element={<InboxPage />} />
       </Routes>
     </BrowserRouter>
   );

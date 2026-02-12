@@ -17,7 +17,7 @@ export default function BookingForm() {
 
     try {
       // 1. Send data to your backend
-      await axios.post('http://localhost:3000/api/bookings', {
+      await axios.post('http://localhost:5000/api/bookings', {
         workspace_id: 1, // Hardcoded for prototype
         ...formData
       });

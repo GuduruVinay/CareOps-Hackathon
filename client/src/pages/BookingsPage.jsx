@@ -12,7 +12,7 @@ export default function BookingsPage() {
 
   useEffect(() => {
     // 1. Fetch bookings from the API endpoint we created earlier
-    axios.get(`http://localhost:3000/api/bookings/${WORKSPACE_ID}`)
+    axios.get(`http://localhost:5000/api/bookings/${WORKSPACE_ID}`)
       .then(response => {
         setBookings(response.data);
         setLoading(false);
