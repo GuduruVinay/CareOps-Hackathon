@@ -143,6 +143,32 @@ app.post('/api/bookings', async (req, res) => {
   }
 });
 
+// 4. GET Inbox Messages (Grouped by Contact)
+app.get('/api/inbox/:workspaceId', async (req, res) => {
+  const { workspaceId } = req.params;
+  try {
+    // This query gets the latest message for every contact
+    const result = await pool.query(
+      `SELECT DISTINCT ON (c.id) 
+          c.id as contact_id, 
+          c.name, 
+          c.email, 
+          m.content as last_message, 
+          m.created_at, 
+          m.direction
+       FROM contacts c
+       JOIN messages m ON c.id = m.contact_id
+       WHERE c.workspace_id = $1
+       ORDER BY c.id, m.created_at DESC`,
+      [workspaceId]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send("Server Error");
+  }
+});
+
 // Start Server
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
