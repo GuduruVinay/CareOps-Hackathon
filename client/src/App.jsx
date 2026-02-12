@@ -5,6 +5,7 @@ import { LayoutDashboard, Users, AlertTriangle, MessageSquare } from 'lucide-rea
 import BookingForm from './components/BookingForm';
 import BookingsPage from './pages/BookingsPage';
 import InboxPage from './pages/InboxPage';
+import InventoryPage from './pages/InventoryPage';
 
 // --- DASHBOARD COMPONENT ---
 const Dashboard = () => {
@@ -38,7 +39,9 @@ const Dashboard = () => {
         <Link to="/inbox">
           <StatCard title="Unread Messages" value={stats?.unread_messages || 0} icon={MessageSquare} />
         </Link>
-        <StatCard title="Low Stock Alerts" value={stats?.low_stock_items || 0} icon={AlertTriangle} alert={(stats?.low_stock_items || 0) > 0} />
+        <Link to="/inventory">
+          <StatCard title="Low Stock Alerts" value={stats?.low_stock_items || 0} icon={AlertTriangle} alert={(stats?.low_stock_items || 0) > 0} />
+        </Link>
       </div>
     </div>
   );
@@ -67,6 +70,7 @@ export default function App() {
         <Route path="/book" element={<BookingForm />} />
         <Route path="/bookings" element={<BookingsPage />} />
         <Route path="/inbox" element={<InboxPage />} />
+        <Route path="/inventory" element={<InventoryPage />} />
       </Routes>
     </BrowserRouter>
   );

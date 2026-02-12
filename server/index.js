@@ -4,7 +4,7 @@ const { Pool } = require('pg');
 const cors = require('cors');
 
 const app = express();
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 5000;
 
 // Middleware
 app.use(cors());
@@ -166,6 +166,27 @@ app.get('/api/inbox/:workspaceId', async (req, res) => {
   } catch (err) {
     console.error(err.message);
     res.status(500).send("Server Error");
+  }
+});
+
+// 5. GET Inventory List
+app.get('/api/inventory/:workspaceId', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM inventory WHERE workspace_id = $1', [req.params.workspaceId]);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
+});
+
+// 6. POST Restock Item
+app.post('/api/inventory/:itemId/restock', async (req, res) => {
+  const { amount } = req.body;
+  try {
+    await pool.query('UPDATE inventory SET quantity = quantity + $1 WHERE id = $2', [amount, req.params.itemId]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).send(err.message);
   }
 });
 
