@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Package, AlertTriangle, ChevronRight, Search, Layers, ArrowLeft, LayoutGrid } from 'lucide-react';
+import { Package, AlertTriangle, ChevronRight, Search, Layers, ArrowLeft, Boxes } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { PieChart, Pie, ResponsiveContainer } from 'recharts';
 import ThemeToggle from '../components/ThemeToggle';
@@ -55,12 +55,14 @@ export default function InventoryPage() {
             <ArrowLeft size={20} />
           </Link>
           
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-              <LayoutGrid className="text-blue-600" size={28} />
-              Inventory Overview
-            </h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Manage your clinic's supply chain</p>
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-200 dark:shadow-none">
+              <Boxes size={24} />
+            </div>
+            <div>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Inventory Overview</h1>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Manage your clinic's supply chain</p>
+             </div>
           </div>
         </div>
         
