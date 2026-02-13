@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Calendar, Clock, ArrowLeft, Search, Mail, CheckCircle, XCircle, AlertCircle, CalendarRange, Filter, X, Stethoscope, MessageSquare, ClipboardList, HelpCircle, Bell } from 'lucide-react';
+import { Calendar, Clock, ArrowLeft, Search, Mail, CheckCircle, XCircle, AlertCircle, CalendarRange, Filter, X, Stethoscope, MessageSquare, ClipboardList, HelpCircle, Bell, ExternalLink } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
@@ -19,7 +19,6 @@ export default function BookingsPage() {
   const [selectedService, setSelectedService] = useState('All');
   const [selectedDate, setSelectedDate] = useState(null);
   
-  // Responsive Toast Position State
   const [toastPosition, setToastPosition] = useState('bottom-right');
 
   const WORKSPACE_ID = 1;
@@ -35,7 +34,6 @@ export default function BookingsPage() {
       .catch(err => console.error("Failed to load bookings", err));
   }, []);
 
-  // Responsive Toast Logic
   useEffect(() => {
     const media = window.matchMedia('(max-width: 1024px)');
     const updatePosition = (e) => setToastPosition(e.matches ? 'top-center' : 'bottom-right');
@@ -73,14 +71,48 @@ export default function BookingsPage() {
     toast('Filters cleared', { icon: '🧹' });
   };
 
-  // --- ACTIONS ---
-  const handleRemind = (name) => {
-      toast.success(`Reminder sent to ${name}!`, {
+  // --- NEW: ADD TO GOOGLE CALENDAR HELPER ---
+  const addToGoogleCalendar = (booking) => {
+    const startTime = new Date(booking.start_time);
+    const endTime = new Date(startTime.getTime() + 60 * 60 * 1000); // Assume 1 hour duration
+    
+    const formatTime = (date) => date.toISOString().replace(/-|:|\.\d\d\d/g, "");
+    
+    const details = `Appointment with ${booking.name}\nService: ${booking.service_type}\nEmail: ${booking.email}`;
+    const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(booking.service_type + " - " + booking.name)}&dates=${formatTime(startTime)}/${formatTime(endTime)}&details=${encodeURIComponent(details)}`;
+    
+    window.open(url, '_blank');
+  };
+
+  // --- UPDATED ACTIONS ---
+  const handleRemind = async (booking) => {
+      // 1. Trigger Backend Email/SMS
+      const promise = axios.post(`http://localhost:5000/api/bookings/${booking.id}/remind`, { type: 'email' });
+      
+      toast.promise(promise, {
+        loading: 'Sending reminder...',
+        success: (res) => {
+            // 2. Ask to add to Calendar after sending
+            return (
+                <span className="flex items-center gap-2">
+                    Reminder sent! 
+                    <button 
+                        onClick={() => addToGoogleCalendar(booking)}
+                        className="underline font-bold hover:text-blue-200"
+                    >
+                        Add to Calendar?
+                    </button>
+                </span>
+            );
+        },
+        error: 'Failed to send reminder',
+      }, {
         style: {
           borderRadius: '10px',
           background: '#333',
           color: '#fff',
         },
+        duration: 5000, // Stay longer so they can click the button
       });
   };
 
@@ -233,7 +265,6 @@ export default function BookingsPage() {
                 </div>
             </div>
             </div>
-            {/* Mobile/Tablet Toggle - Updated Styling */}
             <div className="xl:hidden">
                 <ThemeToggle className="p-2.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all shadow-sm" />
             </div>
@@ -292,8 +323,6 @@ export default function BookingsPage() {
           )}
 
           <div className="hidden xl:block w-px h-8 bg-gray-200 dark:bg-gray-700 mx-1"></div>
-          
-          {/* Desktop Toggle - Updated Styling */}
           <div className="hidden xl:block">
              <ThemeToggle className="p-2.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all shadow-sm" />
           </div>
@@ -359,8 +388,20 @@ export default function BookingsPage() {
                             <td className="p-5 whitespace-nowrap text-center">{getStatusBadge(booking.status)}</td>
                             <td className="p-5 whitespace-nowrap">
                                 <div className="flex justify-center gap-2"> 
-                                    <button onClick={() => handleRemind(booking.name)} className="p-2 text-gray-500 hover:text-blue-600 bg-gray-100 dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors border border-transparent hover:border-blue-100 dark:hover:border-blue-900" title="Send Reminder"><Bell size={18} /></button>
-                                    <button onClick={() => handleMessage(booking)} className="p-2 text-gray-500 hover:text-green-600 bg-gray-100 dark:bg-gray-800 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors border border-transparent hover:border-green-100 dark:hover:border-green-900" title="Message Customer"><MessageSquare size={18} /></button>
+                                    <button 
+                                        onClick={() => handleRemind(booking)}
+                                        className="p-2 text-gray-500 hover:text-blue-600 bg-gray-100 dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors border border-transparent hover:border-blue-100 dark:hover:border-blue-900" 
+                                        title="Send Reminder"
+                                    >
+                                        <Bell size={18} />
+                                    </button>
+                                    <button 
+                                        onClick={() => handleMessage(booking)}
+                                        className="p-2 text-gray-500 hover:text-green-600 bg-gray-100 dark:bg-gray-800 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors border border-transparent hover:border-green-100 dark:hover:border-green-900" 
+                                        title="Message Customer"
+                                    >
+                                        <MessageSquare size={18} />
+                                    </button>
                                 </div>
                             </td>
                         </tr>
@@ -401,8 +442,18 @@ export default function BookingsPage() {
                             </div>
                         </div>
                         <div className="grid grid-cols-2 gap-3 pt-2">
-                            <button onClick={() => handleRemind(booking.name)} className="flex items-center justify-center gap-2 p-2 rounded-lg bg-gray-50 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300 font-medium text-xs hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 transition-colors"><Bell size={14} /> Remind</button>
-                            <button onClick={() => handleMessage(booking)} className="flex items-center justify-center gap-2 p-2 rounded-lg bg-gray-50 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300 font-medium text-xs hover:bg-green-50 dark:hover:bg-green-900/20 hover:text-green-600 transition-colors"><MessageSquare size={14} /> Message</button>
+                            <button 
+                                onClick={() => handleRemind(booking)}
+                                className="flex items-center justify-center gap-2 p-2 rounded-lg bg-gray-50 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300 font-medium text-xs hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 transition-colors"
+                            >
+                                <Bell size={14} /> Remind
+                            </button>
+                            <button 
+                                onClick={() => handleMessage(booking)}
+                                className="flex items-center justify-center gap-2 p-2 rounded-lg bg-gray-50 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300 font-medium text-xs hover:bg-green-50 dark:hover:bg-green-900/20 hover:text-green-600 transition-colors"
+                            >
+                                <MessageSquare size={14} /> Message
+                            </button>
                         </div>
                     </div>
                 ))}
