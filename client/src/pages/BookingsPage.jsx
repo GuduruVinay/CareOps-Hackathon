@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Calendar, Clock, ArrowLeft, Search, Mail, CheckCircle, XCircle, AlertCircle, CalendarRange, Filter, X, Stethoscope, MessageSquare, ClipboardList, HelpCircle } from 'lucide-react';
+import { Calendar, Clock, ArrowLeft, Search, Mail, CheckCircle, XCircle, AlertCircle, CalendarRange, Filter, X, Stethoscope, MessageSquare, ClipboardList, HelpCircle, Bell } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
@@ -55,6 +55,15 @@ export default function BookingsPage() {
     setSearchQuery('');
     setSelectedService('All');
     setSelectedDate(null);
+  };
+
+  // --- ACTIONS ---
+  const handleRemind = (name) => {
+      alert(`Reminder sent to ${name}!`);
+  };
+
+  const handleMessage = (name) => {
+      alert(`Opening chat with ${name}...`);
   };
 
   // --- BADGES ---
@@ -226,7 +235,7 @@ export default function BookingsPage() {
             </div>
           </div>
 
-          {/* Clear Button Logic */}
+          {/* Clear Button */}
           {(searchQuery || selectedService !== 'All' || selectedDate) && (
               <div className="flex w-full md:w-auto">
                 <button 
@@ -244,7 +253,6 @@ export default function BookingsPage() {
                     "
                 >
                     <X size={18} />
-                    {/* Show Text only on Mobile (< md), Hide on Tablet/Desktop (>= md) */}
                     <span className="md:hidden font-medium text-sm">Clear Filters</span>
                 </button>
               </div>
@@ -258,8 +266,6 @@ export default function BookingsPage() {
       </div>
 
       {/* --- CONTENT AREA --- */}
-      {/* ... Content remains the same ... */}
-      
       {filteredBookings.length === 0 ? (
           <div className="text-center py-20 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700">
               <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -271,37 +277,55 @@ export default function BookingsPage() {
           </div>
       ) : (
         <>
-            {/* DESKTOP TABLE */}
-            <div className="hidden md:block bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+            {/* DESKTOP TABLE (Visible on LG+) */}
+            <div className="hidden lg:block bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                     <thead className="bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700">
                         <tr>
-                        <th className="p-5 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Customer</th>
-                        <th className="p-5 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Service</th>
-                        <th className="p-5 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date & Time</th>
-                        <th className="p-5 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                        <th className="p-5 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-left whitespace-nowrap">Customer</th>
+                        
+                        {/* CENTERED: Service */}
+                        <th className="p-5 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center whitespace-nowrap">Service</th>
+                        
+                        {/* CENTERED: Date */}
+                        <th className="p-5 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center whitespace-nowrap">Date & Time</th>
+                        
+                        {/* CENTERED: Status */}
+                        <th className="p-5 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center whitespace-nowrap">Status</th>
+                        
+                        {/* ALIGNED LEFT (next to status): Actions */}
+                        <th className="p-5 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center whitespace-nowrap w-24">Actions</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                         {filteredBookings.map((booking) => (
                         <tr key={booking.id} className="hover:bg-blue-50/50 dark:hover:bg-gray-700/30 transition-colors group cursor-default">
+                            {/* Customer (Left) */}
                             <td className="p-5">
                                 <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-full bg-linear-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold shadow-sm group-hover:scale-105 transition-transform">
+                                    <div className="w-10 h-10 rounded-full bg-linear-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold shadow-sm group-hover:scale-105 transition-transform shrink-0">
                                         {booking.name.charAt(0)}
                                     </div>
-                                    <div>
-                                        <div className="font-semibold text-gray-900 dark:text-white">{booking.name}</div>
-                                        <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 mt-0.5">
+                                    <div className="text-left min-w-35">
+                                        <div className="font-semibold text-gray-900 dark:text-white truncate">{booking.name}</div>
+                                        <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 mt-0.5 truncate">
                                             <Mail size={12} /> {booking.email}
                                         </div>
                                     </div>
                                 </div>
                             </td>
-                            <td className="p-5">{getServiceBadge(booking.service_type)}</td>
-                            <td className="p-5">
-                                <div className="flex flex-col gap-1">
+                            
+                            {/* Service (Center) */}
+                            <td className="p-5 whitespace-nowrap">
+                                <div className="flex justify-center">
+                                    {getServiceBadge(booking.service_type)}
+                                </div>
+                            </td>
+                            
+                            {/* Date (Center) */}
+                            <td className="p-5 whitespace-nowrap">
+                                <div className="flex flex-col items-center gap-1">
                                     <span className="flex items-center gap-2 text-sm font-medium text-gray-900 dark:text-white">
                                         <Calendar size={14} className="text-gray-400" />
                                         {new Date(booking.start_time).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
@@ -312,7 +336,29 @@ export default function BookingsPage() {
                                     </span>
                                 </div>
                             </td>
-                            <td className="p-5">{getStatusBadge(booking.status)}</td>
+                            
+                            {/* Status (Center) */}
+                            <td className="p-5 whitespace-nowrap text-center">{getStatusBadge(booking.status)}</td>
+                            
+                            {/* Actions (Center) */}
+                            <td className="p-5 whitespace-nowrap">
+                                <div className="flex justify-center gap-2"> 
+                                    <button 
+                                        onClick={() => handleRemind(booking.name)}
+                                        className="p-2 text-gray-500 hover:text-blue-600 bg-gray-100 dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors border border-transparent hover:border-blue-100 dark:hover:border-blue-900" 
+                                        title="Send Reminder"
+                                    >
+                                        <Bell size={18} />
+                                    </button>
+                                    <button 
+                                        onClick={() => handleMessage(booking.name)}
+                                        className="p-2 text-gray-500 hover:text-green-600 bg-gray-100 dark:bg-gray-800 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors border border-transparent hover:border-green-100 dark:hover:border-green-900" 
+                                        title="Message Customer"
+                                    >
+                                        <MessageSquare size={18} />
+                                    </button>
+                                </div>
+                            </td>
                         </tr>
                         ))}
                     </tbody>
@@ -320,8 +366,8 @@ export default function BookingsPage() {
                 </div>
             </div>
 
-            {/* MOBILE CARDS */}
-            <div className="md:hidden grid grid-cols-1 gap-4">
+            {/* MOBILE & TABLET CARDS (Visible on < LG) */}
+            <div className="lg:hidden grid grid-cols-1 md:grid-cols-2 gap-4">
                 {filteredBookings.map((booking) => (
                     <div key={booking.id} className="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm relative overflow-hidden hover:bg-blue-50/50 dark:hover:bg-gray-700/30 transition-colors">
                         <div className="absolute top-4 right-4">{getStatusBadge(booking.status)}</div>
@@ -337,7 +383,7 @@ export default function BookingsPage() {
                             </div>
                         </div>
                         <div className="h-px bg-gray-100 dark:bg-gray-700 mb-4"></div>
-                        <div className="flex justify-between items-center">
+                        <div className="flex justify-between items-center mb-4">
                             <div>{getServiceBadge(booking.service_type)}</div>
                             <div className="text-right">
                                 <div className="flex items-center gap-1.5 text-sm font-medium text-gray-900 dark:text-white justify-end">
@@ -349,6 +395,22 @@ export default function BookingsPage() {
                                     {new Date(booking.start_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                                 </div>
                             </div>
+                        </div>
+
+                        {/* ACTIONS FOOTER (Mobile/Tablet) */}
+                        <div className="grid grid-cols-2 gap-3 pt-2">
+                            <button 
+                                onClick={() => handleRemind(booking.name)}
+                                className="flex items-center justify-center gap-2 p-2 rounded-lg bg-gray-50 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300 font-medium text-xs hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 transition-colors"
+                            >
+                                <Bell size={14} /> Remind
+                            </button>
+                            <button 
+                                onClick={() => handleMessage(booking.name)}
+                                className="flex items-center justify-center gap-2 p-2 rounded-lg bg-gray-50 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300 font-medium text-xs hover:bg-green-50 dark:hover:bg-green-900/20 hover:text-green-600 transition-colors"
+                            >
+                                <MessageSquare size={14} /> Message
+                            </button>
                         </div>
                     </div>
                 ))}
