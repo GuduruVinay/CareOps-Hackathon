@@ -92,24 +92,22 @@ export default function BookingsPage() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-8 transition-colors duration-200">
       
-      {/* --- REFINED CALENDAR STYLES --- */}
+      {/* --- CALENDAR STYLES --- */}
       <style>{`
-        /* Main Container */
         .react-datepicker {
             font-family: inherit;
-            border: 1px solid #374151; /* gray-700 */
-            background-color: #1f2937; /* gray-800 */
+            border: 1px solid #374151;
+            background-color: #1f2937;
             color: #fff;
             border-radius: 0.75rem;
             overflow: hidden;
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
         }
-        
-        /* Header Section */
+        .react-datepicker-popper { z-index: 50 !important; }
         .react-datepicker__header {
             background-color: #1f2937;
             border-bottom: none;
-            padding-top: 15px; /* Reduced gap */
+            padding-top: 15px;
         }
         .react-datepicker__current-month {
             color: #fff;
@@ -117,10 +115,8 @@ export default function BookingsPage() {
             font-size: 1rem;
             margin-bottom: 10px;
         }
-        
-        /* Day Names (Mo, Tu, We...) */
         .react-datepicker__day-name {
-            color: #9ca3af; /* gray-400 */
+            color: #9ca3af;
             width: 2rem;
             line-height: 2rem;
             margin: 0.2rem;
@@ -128,51 +124,37 @@ export default function BookingsPage() {
             font-size: 0.7rem;
             font-weight: 700;
         }
-
-        /* Days Grid */
         .react-datepicker__day {
-            color: #e5e7eb; /* gray-200 */
+            color: #e5e7eb;
             width: 2rem;
             line-height: 2rem;
             margin: 0.2rem;
-            border-radius: 50%; /* Force circle shape always */
+            border-radius: 50%;
             transition: background-color 0.2s;
         }
-
-        /* Hover State - Dark Gray Circle */
         .react-datepicker__day:hover {
-            background-color: #374151 !important; /* gray-700 */
+            background-color: #374151 !important;
             color: #fff;
             border-radius: 50% !important;
         }
-
-        /* Selected State - Blue Circle */
         .react-datepicker__day--selected,
         .react-datepicker__day--keyboard-selected {
-            background-color: #2563eb !important; /* blue-600 */
+            background-color: #2563eb !important;
             color: white !important;
             border-radius: 50% !important;
             font-weight: bold;
         }
-
-        /* Outside Month Days */
         .react-datepicker__day--outside-month {
-            color: #4b5563; /* gray-600 */
+            color: #4b5563;
             pointer-events: none;
         }
-
-        /* Navigation Arrows */
-        .react-datepicker__navigation {
-            top: 12px;
-        }
+        .react-datepicker__navigation { top: 12px; }
         .react-datepicker__navigation-icon::before {
             border-color: #9ca3af;
             border-width: 2px 2px 0 0;
             height: 7px;
             width: 7px;
         }
-        
-        /* Hide Triangle */
         .react-datepicker__triangle { display: none; }
       `}</style>
 
@@ -202,6 +184,7 @@ export default function BookingsPage() {
         
         {/* Controls Group */}
         <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3 w-full xl:w-auto">
+          {/* Search */}
           <div className="relative flex-1 md:w-64 w-full group">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors" size={18} />
             <input 
@@ -214,6 +197,7 @@ export default function BookingsPage() {
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+            {/* Service Dropdown */}
             <div className="relative w-full sm:w-48">
                <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={16} />
                <select 
@@ -225,7 +209,8 @@ export default function BookingsPage() {
                </select>
             </div>
 
-            <div className="relative w-full sm:w-auto min-w-37.5">
+            {/* Date Picker */}
+            <div className="relative w-full sm:w-48">
                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none z-10">
                   <Calendar size={16} />
                </div>
@@ -233,27 +218,48 @@ export default function BookingsPage() {
                   selected={selectedDate} 
                   onChange={(date) => setSelectedDate(date)} 
                   placeholderText="mm / dd / yyyy"
-                  className="w-full sm:w-auto pl-10 pr-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm outline-none focus:border-blue-500 dark:text-white shadow-sm cursor-pointer"
+                  wrapperClassName="w-full"
+                  className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm outline-none focus:border-blue-500 dark:text-white shadow-sm cursor-pointer"
                   calendarStartDay={1}
+                  popperPlacement="bottom-start"
                />
             </div>
           </div>
 
-          <div className="flex items-center gap-3 self-end sm:self-auto">
-            {(searchQuery || selectedService !== 'All' || selectedDate) && (
-                <button onClick={clearFilters} className="p-2.5 text-red-500 bg-red-50 dark:bg-red-900/20 rounded-xl hover:bg-red-100 transition-colors">
+          {/* Clear Button Logic */}
+          {(searchQuery || selectedService !== 'All' || selectedDate) && (
+              <div className="flex w-full md:w-auto">
+                <button 
+                    onClick={clearFilters} 
+                    className="
+                        w-full md:w-auto 
+                        flex items-center justify-center gap-2
+                        p-2.5 
+                        text-red-500 
+                        bg-red-50 dark:bg-red-900/20 
+                        rounded-xl 
+                        hover:bg-red-100 dark:hover:bg-red-900/40 
+                        transition-all 
+                        shadow-sm
+                    "
+                >
                     <X size={18} />
+                    {/* Show Text only on Mobile (< md), Hide on Tablet/Desktop (>= md) */}
+                    <span className="md:hidden font-medium text-sm">Clear Filters</span>
                 </button>
-            )}
-            <div className="hidden xl:block w-px h-8 bg-gray-200 dark:bg-gray-700 mx-1"></div>
-            <div className="hidden xl:block">
-                <ThemeToggle className="p-2.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 transition-all shadow-sm" />
-            </div>
+              </div>
+          )}
+
+          <div className="hidden xl:block w-px h-8 bg-gray-200 dark:bg-gray-700 mx-1"></div>
+          <div className="hidden xl:block">
+             <ThemeToggle className="p-2.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 transition-all shadow-sm" />
           </div>
         </div>
       </div>
 
       {/* --- CONTENT AREA --- */}
+      {/* ... Content remains the same ... */}
+      
       {filteredBookings.length === 0 ? (
           <div className="text-center py-20 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700">
               <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
