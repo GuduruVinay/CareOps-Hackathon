@@ -4,12 +4,12 @@ import { Search, Send, Phone, Video, MoreVertical, ArrowLeft, Trash2 } from 'luc
 import { Link } from 'react-router-dom';
 import ThemeToggle from '../components/ThemeToggle';
 
-// Mock Data with Unread Counts
+// Mock Data
 const MOCK_CONVERSATIONS = [
   {
     id: 1,
     user: { name: "Sarah Connor", email: "sarah@example.com", avatar: "S", status: "Online" },
-    unread: 2, // New Feature: Unread count
+    unread: 2,
     messages: [
       { id: 1, text: "Yes please, sending my info now.", sender: "user", time: "08:46 AM" }
     ]
@@ -25,7 +25,6 @@ const MOCK_CONVERSATIONS = [
 ];
 
 export default function InboxPage() {
-  // 1. INITIALIZE STATE
   const [conversations, setConversations] = useState(() => {
     const savedData = localStorage.getItem('inbox_conversations');
     return savedData ? JSON.parse(savedData) : MOCK_CONVERSATIONS;
@@ -33,18 +32,16 @@ export default function InboxPage() {
 
   const [activeConversation, setActiveConversation] = useState(null);
   const [inputText, setInputText] = useState("");
-  const [showMenu, setShowMenu] = useState(false); // State for Dropdown Menu
+  const [showMenu, setShowMenu] = useState(false);
   
   const location = useLocation();
   const navigate = useNavigate();
   const menuRef = useRef(null);
 
-  // 2. SAVE TO LOCAL STORAGE
   useEffect(() => {
     localStorage.setItem('inbox_conversations', JSON.stringify(conversations));
   }, [conversations]);
 
-  // 3. HANDLE CLICK OUTSIDE MENU
   useEffect(() => {
     function handleClickOutside(event) {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
@@ -55,13 +52,11 @@ export default function InboxPage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [menuRef]);
 
-  // 4. AUTOMATIC CHAT SELECTION (Redirect from Bookings)
   useEffect(() => {
     if (location.state?.startChat) {
       const target = location.state.startChat;
       const targetEmail = target.email.toLowerCase();
 
-      // Find existing chat (using functional update to be safe)
       setConversations(prev => {
         const existing = prev.find(c => c.user.email.toLowerCase() === targetEmail);
         
@@ -69,7 +64,6 @@ export default function InboxPage() {
           setActiveConversation(existing);
           return prev;
         } else {
-          // Create new chat if not found
           const newChat = {
             id: Date.now(),
             user: { 
@@ -86,27 +80,17 @@ export default function InboxPage() {
         }
       });
       
-      // Clear navigation state
       navigate(location.pathname, { replace: true, state: {} });
     }
   }, [location.state, navigate]);
 
-  // --- HANDLERS ---
-
-  // Select Chat & Clear Unread
   const handleSelectChat = (chat) => {
-    // 1. Reset unread count locally
     const updatedChat = { ...chat, unread: 0 };
     setActiveConversation(updatedChat);
-
-    // 2. Update list to reflect read status
     setConversations(prev => prev.map(c => c.id === chat.id ? updatedChat : c));
-    
-    // Close menu if open from previous interaction
     setShowMenu(false); 
   };
 
-  // Send Message (Fixing the "First Message" Bug)
   const handleSendMessage = (e) => {
     e.preventDefault();
     if (!inputText.trim() || !activeConversation) return;
@@ -118,7 +102,6 @@ export default function InboxPage() {
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
 
-    // Use Functional State Update to prevent stale closures
     setConversations(prev => {
       return prev.map(c => {
         if (c.id === activeConversation.id) {
@@ -128,7 +111,6 @@ export default function InboxPage() {
       });
     });
     
-    // Update active view
     setActiveConversation(prev => ({
         ...prev,
         messages: [...prev.messages, newMessage]
@@ -137,12 +119,11 @@ export default function InboxPage() {
     setInputText("");
   };
 
-  // Delete Conversation
   const handleDeleteChat = () => {
     if (!activeConversation) return;
     
     setConversations(prev => prev.filter(c => c.id !== activeConversation.id));
-    setActiveConversation(null); // Clear active view
+    setActiveConversation(null);
     setShowMenu(false);
   };
 
@@ -152,7 +133,6 @@ export default function InboxPage() {
       {/* --- LEFT SIDEBAR --- */}
       <div className={`w-full md:w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col ${activeConversation ? 'hidden md:flex' : 'flex'}`}>
         
-        {/* Header */}
         <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link to="/" className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-500 transition-colors">
@@ -160,10 +140,11 @@ export default function InboxPage() {
             </Link>
             <h1 className="text-xl font-bold text-gray-900 dark:text-white">Inbox</h1>
           </div>
-          <ThemeToggle className="p-2 text-gray-500" />
+          
+          {/* UPDATED THEME TOGGLE WITH HOVER STYLES */}
+          <ThemeToggle className="p-2.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all shadow-sm" />
         </div>
 
-        {/* Search */}
         <div className="p-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
@@ -175,7 +156,6 @@ export default function InboxPage() {
           </div>
         </div>
 
-        {/* Conversation List */}
         <div className="flex-1 overflow-y-auto">
           {conversations.length === 0 ? (
              <div className="text-center text-gray-400 mt-10 text-sm">No conversations found</div>
@@ -190,7 +170,6 @@ export default function InboxPage() {
                   <div className="w-full h-full rounded-full bg-linear-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-lg">
                     {chat.user.avatar}
                   </div>
-                  {/* Status Indicator */}
                   {chat.user.status === 'Online' && (
                     <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white dark:border-gray-800 rounded-full"></div>
                   )}
@@ -209,7 +188,6 @@ export default function InboxPage() {
                         {chat.messages[chat.messages.length - 1]?.text || "New conversation"}
                     </p>
                     
-                    {/* Unread Badge */}
                     {chat.unread > 0 && (
                         <span className="ml-2 flex items-center justify-center w-5 h-5 bg-green-500 text-white text-[10px] font-bold rounded-full">
                             {chat.unread}
@@ -228,7 +206,6 @@ export default function InboxPage() {
         
         {activeConversation ? (
           <>
-            {/* Chat Header */}
             <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-white dark:bg-gray-800 shadow-sm z-10">
               <div className="flex items-center gap-4">
                 <button onClick={() => setActiveConversation(null)} className="md:hidden p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
@@ -250,7 +227,6 @@ export default function InboxPage() {
                 <button className="p-2.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"><Phone size={20} /></button>
                 <button className="p-2.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"><Video size={20} /></button>
                 
-                {/* 3-DOTS MENU */}
                 <div className="relative" ref={menuRef}>
                     <button 
                         onClick={() => setShowMenu(!showMenu)} 
@@ -259,7 +235,6 @@ export default function InboxPage() {
                         <MoreVertical size={20} />
                     </button>
                     
-                    {/* Dropdown */}
                     {showMenu && (
                         <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 z-50 overflow-hidden py-1">
                             <button 
@@ -274,7 +249,6 @@ export default function InboxPage() {
               </div>
             </div>
 
-            {/* Messages Area */}
             <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 bg-gray-50 dark:bg-gray-900 scroll-smooth">
               {activeConversation.messages.map((msg) => (
                 <div key={msg.id} className={`flex ${msg.sender === 'me' ? 'justify-end' : 'justify-start'}`}>
@@ -297,7 +271,6 @@ export default function InboxPage() {
               )}
             </div>
 
-            {/* Input Area */}
             <div className="p-4 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
               <form onSubmit={handleSendMessage} className="flex gap-3 max-w-4xl mx-auto">
                 <input 

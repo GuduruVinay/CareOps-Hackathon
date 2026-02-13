@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Calendar, Clock, ArrowLeft, Search, Mail, CheckCircle, XCircle, AlertCircle, CalendarRange, Filter, X, Stethoscope, MessageSquare, ClipboardList, HelpCircle, Bell } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom'; // Added useNavigate
+import { Link, useNavigate } from 'react-router-dom';
 import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
 import toast, { Toaster } from 'react-hot-toast'; 
@@ -12,7 +12,7 @@ export default function BookingsPage() {
   const [filteredBookings, setFilteredBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  const navigate = useNavigate(); // Initialize Navigation Hook
+  const navigate = useNavigate();
 
   // Filter States
   const [searchQuery, setSearchQuery] = useState('');
@@ -84,24 +84,19 @@ export default function BookingsPage() {
       });
   };
 
-  // UPDATED: Navigate to Inbox with Data
   const handleMessage = (booking) => {
-      // 1. Show feedback
       toast.loading(`Opening chat with ${booking.name}...`, { duration: 1000 });
-      
-      // 2. Redirect to Inbox Page and pass the booking data
-      // You can access this data in InboxPage using: const { state } = useLocation();
       setTimeout(() => {
         navigate('/inbox', { 
             state: { 
                 startChat: {
                     name: booking.name,
                     email: booking.email,
-                    id: booking.id // or userId if available
+                    id: booking.id 
                 } 
             } 
         });
-      }, 500); // Small delay for the toast to be seen
+      }, 500); 
   };
 
   // --- BADGES ---
@@ -138,8 +133,6 @@ export default function BookingsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-8 transition-colors duration-200">
-      
-      {/* --- RESPONSIVE TOASTER --- */}
       <Toaster 
         position={toastPosition}
         toastOptions={{
@@ -158,7 +151,6 @@ export default function BookingsPage() {
         }}
       />
 
-      {/* --- CALENDAR STYLES --- */}
       <style>{`
         .react-datepicker {
             font-family: inherit;
@@ -226,8 +218,6 @@ export default function BookingsPage() {
 
       {/* --- HEADER --- */}
       <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 mb-10">
-        
-        {/* Nav Group */}
         <div className="flex w-full xl:w-auto justify-between items-center">
             <div className="flex items-center gap-4">
             <Link to="/" className="p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400 transition-all shadow-sm">
@@ -243,14 +233,13 @@ export default function BookingsPage() {
                 </div>
             </div>
             </div>
+            {/* Mobile/Tablet Toggle - Updated Styling */}
             <div className="xl:hidden">
-                <ThemeToggle className="p-2.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 transition-all shadow-sm" />
+                <ThemeToggle className="p-2.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all shadow-sm" />
             </div>
         </div>
         
-        {/* Controls Group */}
         <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3 w-full xl:w-auto">
-          {/* Search */}
           <div className="relative flex-1 md:w-64 w-full group">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors" size={18} />
             <input 
@@ -263,7 +252,6 @@ export default function BookingsPage() {
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-            {/* Service Dropdown */}
             <div className="relative w-full sm:w-48">
                <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={16} />
                <select 
@@ -275,7 +263,6 @@ export default function BookingsPage() {
                </select>
             </div>
 
-            {/* Date Picker */}
             <div className="relative w-full sm:w-48">
                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none z-10">
                   <Calendar size={16} />
@@ -292,22 +279,11 @@ export default function BookingsPage() {
             </div>
           </div>
 
-          {/* Clear Button */}
           {(searchQuery || selectedService !== 'All' || selectedDate) && (
               <div className="flex w-full md:w-auto">
                 <button 
                     onClick={clearFilters} 
-                    className="
-                        w-full md:w-auto 
-                        flex items-center justify-center gap-2
-                        p-2.5 
-                        text-red-500 
-                        bg-red-50 dark:bg-red-900/20 
-                        rounded-xl 
-                        hover:bg-red-100 dark:hover:bg-red-900/40 
-                        transition-all 
-                        shadow-sm
-                    "
+                    className="w-full md:w-auto flex items-center justify-center gap-2 p-2.5 text-red-500 bg-red-50 dark:bg-red-900/20 rounded-xl hover:bg-red-100 dark:hover:bg-red-900/40 transition-all shadow-sm"
                 >
                     <X size={18} />
                     <span className="md:hidden font-medium text-sm">Clear Filters</span>
@@ -316,8 +292,10 @@ export default function BookingsPage() {
           )}
 
           <div className="hidden xl:block w-px h-8 bg-gray-200 dark:bg-gray-700 mx-1"></div>
+          
+          {/* Desktop Toggle - Updated Styling */}
           <div className="hidden xl:block">
-             <ThemeToggle className="p-2.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 transition-all shadow-sm" />
+             <ThemeToggle className="p-2.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all shadow-sm" />
           </div>
         </div>
       </div>
@@ -334,7 +312,7 @@ export default function BookingsPage() {
           </div>
       ) : (
         <>
-            {/* DESKTOP TABLE (Visible on LG+) */}
+            {/* DESKTOP TABLE */}
             <div className="hidden lg:block bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
@@ -350,7 +328,6 @@ export default function BookingsPage() {
                     <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                         {filteredBookings.map((booking) => (
                         <tr key={booking.id} className="hover:bg-blue-50/50 dark:hover:bg-gray-700/30 transition-colors group cursor-default">
-                            {/* Customer */}
                             <td className="p-5">
                                 <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 rounded-full bg-linear-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold shadow-sm group-hover:scale-105 transition-transform shrink-0">
@@ -364,13 +341,9 @@ export default function BookingsPage() {
                                     </div>
                                 </div>
                             </td>
-                            {/* Service */}
                             <td className="p-5 whitespace-nowrap">
-                                <div className="flex justify-center">
-                                    {getServiceBadge(booking.service_type)}
-                                </div>
+                                <div className="flex justify-center">{getServiceBadge(booking.service_type)}</div>
                             </td>
-                            {/* Date */}
                             <td className="p-5 whitespace-nowrap">
                                 <div className="flex flex-col items-center gap-1">
                                     <span className="flex items-center gap-2 text-sm font-medium text-gray-900 dark:text-white">
@@ -383,25 +356,11 @@ export default function BookingsPage() {
                                     </span>
                                 </div>
                             </td>
-                            {/* Status */}
                             <td className="p-5 whitespace-nowrap text-center">{getStatusBadge(booking.status)}</td>
-                            {/* Actions */}
                             <td className="p-5 whitespace-nowrap">
                                 <div className="flex justify-center gap-2"> 
-                                    <button 
-                                        onClick={() => handleRemind(booking.name)}
-                                        className="p-2 text-gray-500 hover:text-blue-600 bg-gray-100 dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors border border-transparent hover:border-blue-100 dark:hover:border-blue-900" 
-                                        title="Send Reminder"
-                                    >
-                                        <Bell size={18} />
-                                    </button>
-                                    <button 
-                                        onClick={() => handleMessage(booking)} // Pass full object
-                                        className="p-2 text-gray-500 hover:text-green-600 bg-gray-100 dark:bg-gray-800 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors border border-transparent hover:border-green-100 dark:hover:border-green-900" 
-                                        title="Message Customer"
-                                    >
-                                        <MessageSquare size={18} />
-                                    </button>
+                                    <button onClick={() => handleRemind(booking.name)} className="p-2 text-gray-500 hover:text-blue-600 bg-gray-100 dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors border border-transparent hover:border-blue-100 dark:hover:border-blue-900" title="Send Reminder"><Bell size={18} /></button>
+                                    <button onClick={() => handleMessage(booking)} className="p-2 text-gray-500 hover:text-green-600 bg-gray-100 dark:bg-gray-800 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors border border-transparent hover:border-green-100 dark:hover:border-green-900" title="Message Customer"><MessageSquare size={18} /></button>
                                 </div>
                             </td>
                         </tr>
@@ -411,7 +370,7 @@ export default function BookingsPage() {
                 </div>
             </div>
 
-            {/* MOBILE & TABLET CARDS (Visible on < LG) */}
+            {/* MOBILE & TABLET CARDS */}
             <div className="lg:hidden grid grid-cols-1 md:grid-cols-2 gap-4">
                 {filteredBookings.map((booking) => (
                     <div key={booking.id} className="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm relative overflow-hidden hover:bg-blue-50/50 dark:hover:bg-gray-700/30 transition-colors">
@@ -441,21 +400,9 @@ export default function BookingsPage() {
                                 </div>
                             </div>
                         </div>
-
-                        {/* ACTIONS FOOTER (Mobile/Tablet) */}
                         <div className="grid grid-cols-2 gap-3 pt-2">
-                            <button 
-                                onClick={() => handleRemind(booking.name)}
-                                className="flex items-center justify-center gap-2 p-2 rounded-lg bg-gray-50 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300 font-medium text-xs hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 transition-colors"
-                            >
-                                <Bell size={14} /> Remind
-                            </button>
-                            <button 
-                                onClick={() => handleMessage(booking)} // Pass full object
-                                className="flex items-center justify-center gap-2 p-2 rounded-lg bg-gray-50 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300 font-medium text-xs hover:bg-green-50 dark:hover:bg-green-900/20 hover:text-green-600 transition-colors"
-                            >
-                                <MessageSquare size={14} /> Message
-                            </button>
+                            <button onClick={() => handleRemind(booking.name)} className="flex items-center justify-center gap-2 p-2 rounded-lg bg-gray-50 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300 font-medium text-xs hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 transition-colors"><Bell size={14} /> Remind</button>
+                            <button onClick={() => handleMessage(booking)} className="flex items-center justify-center gap-2 p-2 rounded-lg bg-gray-50 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300 font-medium text-xs hover:bg-green-50 dark:hover:bg-green-900/20 hover:text-green-600 transition-colors"><MessageSquare size={14} /> Message</button>
                         </div>
                     </div>
                 ))}
