@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import axios from 'axios';
-import { CheckCircle, Calendar as CalendarIcon, Clock, ChevronLeft, ChevronRight, Briefcase } from 'lucide-react';
+import { CheckCircle, Calendar as Clock, ChevronLeft, ChevronRight, Briefcase } from 'lucide-react';
 import ThemeToggle from '../components/ThemeToggle';
+import AIAssistant from '../components/AIAssistant';
 
 export default function BookingForm() {
   const [formData, setFormData] = useState({
@@ -253,6 +254,7 @@ export default function BookingForm() {
           </button>
         </form>
       </div>
+      <AIAssistant context="customer" />
     </div>
   );
 }

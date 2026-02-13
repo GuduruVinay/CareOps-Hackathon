@@ -3,6 +3,7 @@ import axios from 'axios';
 import { Link } from 'react-router-dom';
 import { CalendarRange, MessageSquare, AlertTriangle, ExternalLink, ArrowRight } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
+import AIAssistant from './AIAssistant';
 
 export default function Dashboard() {
   const [stats, setStats] = useState({
@@ -130,6 +131,7 @@ export default function Dashboard() {
         />
 
       </div>
+      <AIAssistant context="admin" />
     </div>
   );
 }
