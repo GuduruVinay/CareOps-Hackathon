@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { Mic, Send, X, MessageSquare, RotateCcw, Phone, Mail } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Mic, Send, X, MessageSquare, RotateCcw, Phone, Mail, MicOff, AlertCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom'; 
 
 export default function AIAssistant({ context = 'customer' }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -10,16 +10,21 @@ export default function AIAssistant({ context = 'customer' }) {
   const [loading, setLoading] = useState(false);
   const [showFAQs, setShowFAQs] = useState(true);
   
+  // Voice State
+  const [isListening, setIsListening] = useState(false);
+  const [isSpeechSupported, setIsSpeechSupported] = useState(false); // NEW: Check Support
+  const recognitionRef = useRef(null);
+
   const navigate = useNavigate();
   const messagesEndRef = useRef(null);
   const audioRef = useRef(new Audio('/blip.mp3'));
-  
+
   const playBlip = () => {
     try {
       audioRef.current.volume = 0.5;
       audioRef.current.currentTime = 0;
       audioRef.current.play().catch(() => {}); 
-    } catch (e) { /* Ignore audio errors */ }
+    } catch (e) { }
   };
 
   const initialMessage = { 
@@ -29,7 +34,6 @@ export default function AIAssistant({ context = 'customer' }) {
       : "Hello! I'm your CareOps assistant. How can I help you schedule today?" 
   };
 
-  // --- UPDATED FAQS FOR REAL DATA QUERIES ---
   const FAQS = {
     customer: [
       { label: "Book an appointment", query: "I want to book an appointment" },
@@ -42,22 +46,54 @@ export default function AIAssistant({ context = 'customer' }) {
       { label: "Show today's bookings", query: "Show me today's bookings" },
       { label: "Check Low Stock", query: "Show low stock items" },
       { label: "Unread Messages", query: "Do I have unread messages?" },
-      { label: "Inventory Summary", query: "Give me an inventory summary" }, // Changed from "Go to Inventory"
+      { label: "Inventory Summary", query: "Give me an inventory summary" },
       { label: "System Status", query: "System status", highlight: true },
     ]
   };
 
   const currentFaqs = FAQS[context] || FAQS.customer;
 
+  // --- INITIALIZATION ---
   useEffect(() => {
     setMessages([initialMessage]);
     setShowFAQs(true);
+
+    // BROWSER SUPPORT CHECK
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    
+    if (SpeechRecognition) {
+      setIsSpeechSupported(true);
+      recognitionRef.current = new SpeechRecognition();
+      recognitionRef.current.continuous = false;
+      recognitionRef.current.interimResults = false;
+      recognitionRef.current.lang = 'en-US';
+
+      recognitionRef.current.onstart = () => setIsListening(true);
+      recognitionRef.current.onend = () => setIsListening(false);
+      
+      recognitionRef.current.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        if (transcript) {
+           setInput(transcript);
+           handleSend(transcript);
+        }
+      };
+
+      recognitionRef.current.onerror = (event) => {
+        console.error("Speech Recognition Error:", event.error);
+        setIsListening(false);
+        setMessages(prev => [...prev, { sender: 'bot', text: "I couldn't hear you clearly. Please try again." }]);
+      };
+    } else {
+      setIsSpeechSupported(false); // Firefox / Unsupported Browsers
+    }
   }, [context]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, showFAQs, loading]);
+  }, [messages, showFAQs, loading, isListening]);
 
+  // --- HANDLERS ---
   const handleRestart = () => {
     setMessages([initialMessage]);
     setShowFAQs(true);
@@ -69,13 +105,11 @@ export default function AIAssistant({ context = 'customer' }) {
     const query = textOverride || input;
     if (!query.trim()) return;
 
-    // 1. User Message
     setShowFAQs(false);
     setMessages(prev => [...prev, { sender: 'user', text: query }]);
     setInput("");
     setLoading(true);
 
-    // 2. Client-Side Intercepts (Instant Replies)
     if (query.toLowerCase().includes('contact support')) {
         setTimeout(() => {
             setMessages(prev => [...prev, { 
@@ -89,23 +123,16 @@ export default function AIAssistant({ context = 'customer' }) {
         return;
     }
 
-    // 3. Backend Call (Real Data)
     try {
       const res = await axios.get(`http://localhost:5000/api/assistant`, {
         params: { query, context }
       });
-
       const botReply = res.data.reply;
-      
       setTimeout(() => {
         setMessages(prev => [...prev, { sender: 'bot', text: botReply }]);
         playBlip();
         setLoading(false);
-
-        // NOTE: Navigation Actions Removed as requested.
-        // The bot now provides data directly in the chat.
       }, 600);
-
     } catch (error) {
       setMessages(prev => [...prev, { sender: 'bot', text: "I'm having trouble reaching the server right now." }]);
       setLoading(false);
@@ -113,7 +140,12 @@ export default function AIAssistant({ context = 'customer' }) {
   };
 
   const toggleListening = () => {
-     alert("Voice features coming soon!");
+    if (!isSpeechSupported) return; // Prevent action if not supported
+    if (isListening) {
+        recognitionRef.current.stop();
+    } else {
+        recognitionRef.current.start();
+    }
   };
 
   return (
@@ -151,6 +183,16 @@ export default function AIAssistant({ context = 'customer' }) {
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 dark:bg-gray-900 scroll-smooth">
+                {/* Fallback Warning for Firefox Users */}
+                {!isSpeechSupported && (
+                    <div className="flex justify-center mb-2">
+                        <div className="bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400 text-xs px-3 py-2 rounded-lg flex items-center gap-2 border border-yellow-200 dark:border-yellow-800">
+                            <AlertCircle size={14} />
+                            <span>Voice chat works best in Chrome/Edge.</span>
+                        </div>
+                    </div>
+                )}
+
                 {messages.map((msg, idx) => (
                     <div key={idx} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'} animate-fadeIn`}>
                         {msg.isContactInfo ? (
@@ -197,6 +239,18 @@ export default function AIAssistant({ context = 'customer' }) {
                   </div>
                 )}
 
+                {isListening && (
+                    <div className="flex justify-end animate-fadeIn">
+                        <div className="bg-red-50 dark:bg-red-900/20 p-3 rounded-2xl rounded-br-none border border-red-200 dark:border-red-900 flex items-center gap-2">
+                             <span className="relative flex h-3 w-3">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                             </span>
+                             <span className="text-xs font-bold text-red-600 dark:text-red-400">Listening...</span>
+                        </div>
+                    </div>
+                )}
+
                 {loading && (
                     <div className="flex justify-start animate-fadeIn">
                         <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl rounded-bl-none border border-gray-200 dark:border-gray-700 shadow-sm flex gap-1.5 items-center">
@@ -210,25 +264,42 @@ export default function AIAssistant({ context = 'customer' }) {
             </div>
 
             <div className="p-3 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 flex gap-2 items-center">
-                <button 
-                    onClick={toggleListening}
-                    className="p-3 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-                >
-                    <Mic size={20} />
-                </button>
+                
+                {/* MICROPHONE BUTTON - CONDITIONALLY RENDERED */}
+                {isSpeechSupported ? (
+                    <button 
+                        onClick={toggleListening}
+                        className={`p-3 rounded-xl transition-all ${
+                            isListening 
+                            ? 'bg-red-100 text-red-600 animate-pulse border border-red-200' 
+                            : 'bg-gray-100 dark:bg-gray-700 text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600'
+                        }`}
+                        title="Speak"
+                    >
+                        {isListening ? <MicOff size={20} /> : <Mic size={20} />}
+                    </button>
+                ) : (
+                    <div 
+                        className="p-3 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-300 dark:text-gray-600 cursor-not-allowed"
+                        title="Voice unavailable in this browser"
+                    >
+                        <MicOff size={20} />
+                    </div>
+                )}
                 
                 <input 
                     type="text" 
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-                    placeholder="Ask a question..."
+                    placeholder={isListening ? "Listening..." : "Ask a question..."}
                     className="flex-1 bg-gray-100 dark:bg-gray-700 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/50 dark:text-white transition-all"
+                    disabled={isListening} 
                 />
                 
                 <button 
                     onClick={() => handleSend()}
-                    disabled={!input.trim()}
+                    disabled={!input.trim() || isListening}
                     className="p-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md active:scale-95"
                 >
                     <Send size={20} />
