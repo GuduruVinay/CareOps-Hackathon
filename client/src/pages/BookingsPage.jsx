@@ -4,6 +4,7 @@ import { Calendar, Clock, ArrowLeft, Search, Mail, CheckCircle, XCircle, AlertCi
 import { Link } from 'react-router-dom';
 import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
+import toast, { Toaster } from 'react-hot-toast'; 
 import ThemeToggle from '../components/ThemeToggle';
 
 export default function BookingsPage() {
@@ -15,9 +16,13 @@ export default function BookingsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedService, setSelectedService] = useState('All');
   const [selectedDate, setSelectedDate] = useState(null);
+  
+  // Responsive Toast Position State
+  const [toastPosition, setToastPosition] = useState('bottom-right');
 
   const WORKSPACE_ID = 1;
 
+  // 1. Fetch Data
   useEffect(() => {
     axios.get(`http://localhost:5000/api/bookings/${WORKSPACE_ID}`)
       .then(response => {
@@ -29,8 +34,22 @@ export default function BookingsPage() {
       .catch(err => console.error("Failed to load bookings", err));
   }, []);
 
+  // 2. Responsive Toast Logic
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 1024px)'); // Tablet & Mobile breakpoint
+    const updatePosition = (e) => setToastPosition(e.matches ? 'top-center' : 'bottom-right');
+    
+    // Set initial
+    updatePosition(media);
+    
+    // Listen for resize
+    media.addEventListener('change', updatePosition);
+    return () => media.removeEventListener('change', updatePosition);
+  }, []);
+
   const uniqueServices = ['All', ...new Set(bookings.map(b => b.service_type))];
 
+  // 3. Filter Logic
   useEffect(() => {
     const lowerQuery = searchQuery.toLowerCase();
     
@@ -55,15 +74,24 @@ export default function BookingsPage() {
     setSearchQuery('');
     setSelectedService('All');
     setSelectedDate(null);
+    toast('Filters cleared', { icon: '🧹' });
   };
 
   // --- ACTIONS ---
   const handleRemind = (name) => {
-      alert(`Reminder sent to ${name}!`);
+      toast.success(`Reminder sent to ${name}!`, {
+        style: {
+          borderRadius: '10px',
+          background: '#333',
+          color: '#fff',
+        },
+      });
   };
 
   const handleMessage = (name) => {
-      alert(`Opening chat with ${name}...`);
+      toast.loading(`Opening chat with ${name}...`, {
+        duration: 2000,
+      });
   };
 
   // --- BADGES ---
@@ -101,6 +129,25 @@ export default function BookingsPage() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-8 transition-colors duration-200">
       
+      {/* --- RESPONSIVE TOASTER --- */}
+      <Toaster 
+        position={toastPosition} // Dynamic Position
+        toastOptions={{
+            className: 'dark:bg-gray-800 dark:text-white bg-white text-gray-900',
+            style: {
+                borderRadius: '12px',
+                padding: '16px',
+                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+            },
+            success: {
+                iconTheme: {
+                    primary: '#10B981',
+                    secondary: 'white',
+                },
+            },
+        }}
+      />
+
       {/* --- CALENDAR STYLES --- */}
       <style>{`
         .react-datepicker {
@@ -284,17 +331,9 @@ export default function BookingsPage() {
                     <thead className="bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700">
                         <tr>
                         <th className="p-5 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-left whitespace-nowrap">Customer</th>
-                        
-                        {/* CENTERED: Service */}
                         <th className="p-5 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center whitespace-nowrap">Service</th>
-                        
-                        {/* CENTERED: Date */}
                         <th className="p-5 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center whitespace-nowrap">Date & Time</th>
-                        
-                        {/* CENTERED: Status */}
                         <th className="p-5 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center whitespace-nowrap">Status</th>
-                        
-                        {/* ALIGNED LEFT (next to status): Actions */}
                         <th className="p-5 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center whitespace-nowrap w-24">Actions</th>
                         </tr>
                     </thead>
@@ -304,10 +343,10 @@ export default function BookingsPage() {
                             {/* Customer (Left) */}
                             <td className="p-5">
                                 <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-full bg-linear-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold shadow-sm group-hover:scale-105 transition-transform shrink-0">
+                                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold shadow-sm group-hover:scale-105 transition-transform flex-shrink-0">
                                         {booking.name.charAt(0)}
                                     </div>
-                                    <div className="text-left min-w-35">
+                                    <div className="text-left min-w-[140px]">
                                         <div className="font-semibold text-gray-900 dark:text-white truncate">{booking.name}</div>
                                         <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 mt-0.5 truncate">
                                             <Mail size={12} /> {booking.email}
@@ -372,7 +411,7 @@ export default function BookingsPage() {
                     <div key={booking.id} className="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm relative overflow-hidden hover:bg-blue-50/50 dark:hover:bg-gray-700/30 transition-colors">
                         <div className="absolute top-4 right-4">{getStatusBadge(booking.status)}</div>
                         <div className="flex items-center gap-4 mb-5 pr-20">
-                            <div className="w-12 h-12 rounded-full bg-linear-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-lg shadow-sm">
+                            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-lg shadow-sm">
                                 {booking.name.charAt(0)}
                             </div>
                             <div className="min-w-0">
