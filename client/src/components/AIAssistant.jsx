@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { Mic, Send, X, MessageSquare, RotateCcw, Phone, Mail, MicOff, AlertCircle } from 'lucide-react';
-import { useNavigate } from 'react-router-dom'; 
 
 export default function AIAssistant({ context = 'customer' }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -10,12 +9,23 @@ export default function AIAssistant({ context = 'customer' }) {
   const [loading, setLoading] = useState(false);
   const [showFAQs, setShowFAQs] = useState(true);
   
+  useEffect(() => {
+    const handleOpenEvent = () => {
+      setIsOpen(true);
+      // Optional: Play sound when opened via event
+      playBlip(); 
+    };
+
+    window.addEventListener('open-ai-chat', handleOpenEvent);
+
+    // Cleanup listener on unmount
+    return () => window.removeEventListener('open-ai-chat', handleOpenEvent);
+  }, []);
+
   // Voice State
   const [isListening, setIsListening] = useState(false);
   const [isSpeechSupported, setIsSpeechSupported] = useState(false); // NEW: Check Support
   const recognitionRef = useRef(null);
-
-  const navigate = useNavigate();
   const messagesEndRef = useRef(null);
   const audioRef = useRef(new Audio('/blip.mp3'));
 
