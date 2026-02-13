@@ -207,6 +207,40 @@ app.put('/api/inventory/:id', async (req, res) => {
   }
 });
 
+// 8. POST Trigger Reminder (Email/SMS)
+app.post('/api/bookings/:id/remind', async (req, res) => {
+  const { type } = req.body; // 'email' or 'sms'
+  try {
+    const bookingRes = await pool.query(
+      `SELECT b.*, c.name, c.email 
+       FROM bookings b 
+       JOIN contacts c ON b.contact_id = c.id 
+       WHERE b.id = $1`,
+      [req.params.id]
+    );
+
+    if (bookingRes.rows.length === 0) {
+      return res.status(404).json({ error: "Booking not found" });
+    }
+
+    const booking = bookingRes.rows[0];
+
+    // --- REAL WORLD INTEGRATION POINT ---
+    // Here you would call Twilio or SendGrid
+    // Example: await sendgrid.send({ to: booking.email, ... })
+    
+    // For now, we simulate it:
+    console.log(`[REMINDER SENT] Type: ${type}`);
+    console.log(` -> To: ${booking.name} (${booking.email})`);
+    console.log(` -> Message: Don't forget your ${booking.service_type} on ${new Date(booking.start_time).toLocaleString()}`);
+
+    res.json({ success: true, message: `${type.toUpperCase()} reminder sent to ${booking.name}` });
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send("Server Error");
+  }
+});
+
 // Start Server
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
