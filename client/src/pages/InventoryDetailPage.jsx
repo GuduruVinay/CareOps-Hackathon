@@ -4,6 +4,7 @@ import axios from 'axios';
 import { ArrowLeft, TrendingDown, TrendingUp, AlertTriangle, Plus, Minus, Settings, Target } from 'lucide-react';
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts'; 
 import ThemeToggle from '../components/ThemeToggle';
+import LoadingThrobber from '../components/LoadingThrobber';
 
 // --- MOCK DATA GENERATORS ---
 const generateHistoryData = (currentQty, range) => {
@@ -127,7 +128,8 @@ export default function InventoryDetailPage() {
   const incrementRestock = () => setRestockAmount(prev => parseInt(prev) + 1);
   const decrementRestock = () => setRestockAmount(prev => Math.max(1, parseInt(prev) - 1));
 
-  if (loading) return <div className="p-8 min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white">Loading...</div>;
+  // if (loading) return <div className="p-8 min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white">Loading...</div>;
+  if (loading) return <LoadingThrobber />;
   if (!item) return <div className="p-8 text-red-500">Item not found</div>;
 
   const isLow = item.quantity < item.low_stock_threshold;

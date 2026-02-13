@@ -6,6 +6,7 @@ import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
 import toast, { Toaster } from 'react-hot-toast'; 
 import ThemeToggle from '../components/ThemeToggle';
+import LoadingThrobber from '../components/LoadingThrobber';
 
 export default function BookingsPage() {
   const [bookings, setBookings] = useState([]);
@@ -161,7 +162,8 @@ export default function BookingsPage() {
     return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700"><AlertCircle size={12} /> PENDING</span>;
   };
 
-  if (loading) return <div className="p-8 min-h-screen bg-gray-50 dark:bg-gray-900 dark:text-white">Loading bookings...</div>;
+  //if (loading) return <div className="p-8 min-h-screen bg-gray-50 dark:bg-gray-900 dark:text-white">Loading bookings...</div>;
+  if (loading) return <LoadingThrobber />;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-8 transition-colors duration-200">

@@ -4,6 +4,7 @@ import { Package, AlertTriangle, ChevronRight, Search, Layers, ArrowLeft, Boxes 
 import { Link } from 'react-router-dom';
 import { PieChart, Pie, ResponsiveContainer } from 'recharts';
 import ThemeToggle from '../components/ThemeToggle';
+import LoadingThrobber from '../components/LoadingThrobber';
 
 export default function InventoryPage() {
   const [inventory, setInventory] = useState([]);
@@ -33,7 +34,8 @@ export default function InventoryPage() {
     setFilteredInventory(filtered);
   }, [searchQuery, inventory]);
 
-  if (loading) return <div className="p-8 min-h-screen bg-gray-50 dark:bg-gray-900 dark:text-white">Loading...</div>;
+  //if (loading) return <div className="p-8 min-h-screen bg-gray-50 dark:bg-gray-900 dark:text-white">Loading...</div>;
+  if (loading) return <LoadingThrobber />;
 
   const totalItems = inventory.length;
   const lowStockCount = inventory.filter(i => i.quantity < i.low_stock_threshold).length;

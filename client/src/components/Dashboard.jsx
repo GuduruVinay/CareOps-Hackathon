@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { CalendarRange, MessageSquare, AlertTriangle, ExternalLink, ArrowRight } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 import AIAssistant from './AIAssistant';
+import LoadingThrobber from './LoadingThrobber';
 
 export default function Dashboard() {
   const [stats, setStats] = useState({
