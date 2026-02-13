@@ -343,6 +343,22 @@ app.get('/api/assistant', async (req, res) => {
   }
 });
 
+// --- 10. AUTHENTICATION ENDPOINT ---
+app.post('/api/login', (req, res) => {
+  const { email, password } = req.body;
+
+  // Simple Admin Check (In production, use hashed passwords in DB)
+  const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@careops.com';
+  const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
+
+  if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
+    // Return a basic token (In production, use JWT)
+    res.json({ success: true, token: 'mock-admin-token-123', user: { name: 'Admin User', email: ADMIN_EMAIL } });
+  } else {
+    res.status(401).json({ success: false, message: 'Invalid credentials' });
+  }
+});
+
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });

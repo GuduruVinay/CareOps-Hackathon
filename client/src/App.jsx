@@ -1,26 +1,54 @@
-import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
-
-// Import Components
+import { Routes, Route, BrowserRouter } from 'react-router-dom';
+import ProtectedRoute from './components/ProtectedRoute';
 import Dashboard from './components/Dashboard';
 import BookingForm from './components/BookingForm';
-// Import Pages
 import BookingsPage from './pages/BookingsPage';
-import InboxPage from './pages/InboxPage';
 import InventoryPage from './pages/InventoryPage';
 import InventoryDetailPage from './pages/InventoryDetailPage';
+import InboxPage from './pages/InboxPage';
+import LoginPage from './pages/LoginPage';
 
-// --- MAIN APP COMPONENT ---
-export default function App() {
+function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Dashboard />} />
+        {/* PUBLIC ROUTE */}
+        <Route path="/login" element={<LoginPage />} />
         <Route path="/book" element={<BookingForm />} />
-        <Route path="/bookings" element={<BookingsPage />} />
-        <Route path="/inbox" element={<InboxPage />} />
-        <Route path="/inventory" element={<InventoryPage />} />
-        <Route path="/inventory/:id" element={<InventoryDetailPage />} />
+
+        {/* PROTECTED ADMIN ROUTES */}
+        <Route path="/" element={
+          <ProtectedRoute>
+            <Dashboard />
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/bookings" element={
+          <ProtectedRoute>
+            <BookingsPage />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/inventory" element={
+          <ProtectedRoute>
+            <InventoryPage />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/inventory/:id" element={
+          <ProtectedRoute>
+            <InventoryDetailPage />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/inbox" element={
+          <ProtectedRoute>
+            <InboxPage />
+          </ProtectedRoute>
+        } />
       </Routes>
     </BrowserRouter>
   );
 }
+
+export default App;
