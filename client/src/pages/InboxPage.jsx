@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Search, Send, Phone, Video, MoreVertical, ArrowLeft, Trash2 } from 'lucide-react';
+import { Search, Send, Phone, Video, MoreVertical, ArrowLeft, Trash2, MessageSquare } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import ThemeToggle from '../components/ThemeToggle';
 
@@ -133,18 +133,28 @@ export default function InboxPage() {
       {/* --- LEFT SIDEBAR --- */}
       <div className={`w-full md:w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col ${activeConversation ? 'hidden md:flex' : 'flex'}`}>
         
-        <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+        {/* HEADER - FIXED HEIGHT FOR ALIGNMENT */}
+        <div className="h-18 px-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
-            <Link to="/" className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-500 transition-colors">
+            <Link to="/" className="p-2.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl text-gray-500 transition-colors">
               <ArrowLeft size={20} />
             </Link>
-            <h1 className="text-xl font-bold text-gray-900 dark:text-white">Inbox</h1>
+            
+            <div className="flex items-center gap-3">
+               <div className="p-2.5 bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-200 dark:shadow-none">
+                  <MessageSquare size={20} />
+               </div>
+               <div>
+                  <h1 className="text-base font-bold text-gray-900 dark:text-white leading-none">Inbox</h1>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 font-medium">Recent conversations</p>
+               </div>
+            </div>
           </div>
           
-          {/* UPDATED THEME TOGGLE WITH HOVER STYLES */}
           <ThemeToggle className="p-2.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all shadow-sm" />
         </div>
 
+        {/* Search */}
         <div className="p-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
@@ -206,7 +216,8 @@ export default function InboxPage() {
         
         {activeConversation ? (
           <>
-            <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-white dark:bg-gray-800 shadow-sm z-10">
+            {/* CHAT HEADER - FIXED HEIGHT FOR ALIGNMENT */}
+            <div className="h-18 px-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-white dark:bg-gray-800 shadow-sm z-10 shrink-0">
               <div className="flex items-center gap-4">
                 <button onClick={() => setActiveConversation(null)} className="md:hidden p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
                   <ArrowLeft size={20} />

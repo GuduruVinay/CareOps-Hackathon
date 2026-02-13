@@ -14,12 +14,11 @@ app.use(express.json());
 const pool = new Pool({
   connectionString: process.env.DATABASE_URI,
   ssl: {
-    rejectUnauthorized: false // Required for Supabase
+    rejectUnauthorized: false // Required for Supabase/Neon/Heroku
   }
 });
 
 // --- HELPER: Mock Automation Logic ---
-// In a real app, this would send an email via SendGrid/Resend
 async function runAutomation(triggerType, data) {
   console.log(`[AUTOMATION TRIGGERED] Type: ${triggerType}`);
   
@@ -36,12 +35,11 @@ async function runAutomation(triggerType, data) {
 
 // --- ROUTES ---
 
-// 1. GET Dashboard Stats (For the Admin Dashboard)
+// 1. GET Dashboard Stats (Calculated on Server)
 app.get('/api/dashboard/:workspaceId', async (req, res) => {
   const { workspaceId } = req.params;
   
   try {
-    // Run 3 queries in parallel for speed
     const bookingsQuery = pool.query(
       'SELECT COUNT(*) FROM bookings WHERE workspace_id = $1 AND start_time > NOW()', 
       [workspaceId]
@@ -60,7 +58,7 @@ app.get('/api/dashboard/:workspaceId', async (req, res) => {
     res.json({
       upcoming_bookings: parseInt(bookings.rows[0].count),
       low_stock_items: parseInt(lowStock.rows[0].count),
-      unread_messages: parseInt(messages.rows[0].count) // Mocking unread as total inbound for now
+      unread_messages: parseInt(messages.rows[0].count)
     });
   } catch (err) {
     console.error(err.message);
@@ -68,7 +66,7 @@ app.get('/api/dashboard/:workspaceId', async (req, res) => {
   }
 });
 
-// 2. GET All Bookings (For the Calendar/List View)
+// 2. GET All Bookings
 app.get('/api/bookings/:workspaceId', async (req, res) => {
   const { workspaceId } = req.params;
   try {
@@ -87,12 +85,26 @@ app.get('/api/bookings/:workspaceId', async (req, res) => {
   }
 });
 
-// 3. POST New Booking (Public facing - Triggers Automation)
+// 3. GET Inventory List (UPDATED TO FIX 404)
+// Now accepts calls with OR without the ID (defaults to 1)
+app.get(['/api/inventory', '/api/inventory/:workspaceId'], async (req, res) => {
+  const workspaceId = req.params.workspaceId || 1; // Default to 1 if missing
+  try {
+    const result = await pool.query(
+      'SELECT * FROM inventory WHERE workspace_id = $1 ORDER BY item_name ASC', 
+      [workspaceId]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
+});
+
+// 4. POST New Booking
 app.post('/api/bookings', async (req, res) => {
   const { workspace_id, name, email, service_type, start_time } = req.body;
   
   try {
-    // Start a transaction so we do everything or nothing
     await pool.query('BEGIN');
 
     // A. Create/Find Contact
@@ -114,18 +126,17 @@ app.post('/api/bookings', async (req, res) => {
 
     // B. Create Booking
     const newBooking = await pool.query(
-      'INSERT INTO bookings (workspace_id, contact_id, service_type, start_time) VALUES ($1, $2, $3, $4) RETURNING *',
-      [workspace_id, contact_id, service_type, start_time]
+      'INSERT INTO bookings (workspace_id, contact_id, service_type, start_time, status) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [workspace_id, contact_id, service_type, start_time, 'CONFIRMED']
     );
 
-    // C. Update Inventory (Example: Reduce "Gloves" by 1 pair per booking)
-    // In a real app, you'd link services to specific items.
+    // C. Update Inventory
     const invUpdate = await pool.query(
         'UPDATE inventory SET quantity = quantity - 1 WHERE workspace_id = $1 AND item_name = $2 RETURNING *',
         [workspace_id, 'Gloves']
     );
 
-    // D. Check for Low Stock (Automation Trigger)
+    // D. Check for Low Stock
     if (invUpdate.rows.length > 0 && invUpdate.rows[0].quantity < invUpdate.rows[0].low_stock_threshold) {
         runAutomation('LOW_STOCK', invUpdate.rows[0]);
     }
@@ -143,11 +154,10 @@ app.post('/api/bookings', async (req, res) => {
   }
 });
 
-// 4. GET Inbox Messages (Grouped by Contact)
+// 5. GET Inbox Messages
 app.get('/api/inbox/:workspaceId', async (req, res) => {
   const { workspaceId } = req.params;
   try {
-    // This query gets the latest message for every contact
     const result = await pool.query(
       `SELECT DISTINCT ON (c.id) 
           c.id as contact_id, 
@@ -169,19 +179,6 @@ app.get('/api/inbox/:workspaceId', async (req, res) => {
   }
 });
 
-// 5. GET Inventory List (Sorts Alphabetically)
-app.get('/api/inventory/:workspaceId', async (req, res) => {
-  try {
-    const result = await pool.query(
-      'SELECT * FROM inventory WHERE workspace_id = $1 ORDER BY item_name ASC', 
-      [req.params.workspaceId]
-    );
-    res.json(result.rows);
-  } catch (err) {
-    res.status(500).send(err.message);
-  }
-});
-
 // 6. POST Restock Item
 app.post('/api/inventory/:itemId/restock', async (req, res) => {
   const { amount } = req.body;
@@ -193,11 +190,10 @@ app.post('/api/inventory/:itemId/restock', async (req, res) => {
   }
 });
 
-// 7. PUT Update Inventory Item (Threshold & Target)
+// 7. PUT Update Inventory Item
 app.put('/api/inventory/:id', async (req, res) => {
   const { low_stock_threshold, target_capacity } = req.body;
   try {
-    // Dynamic query to update either or both fields
     await pool.query(
       `UPDATE inventory 
        SET low_stock_threshold = COALESCE($1, low_stock_threshold),

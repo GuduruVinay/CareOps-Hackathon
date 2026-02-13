@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
 import { ArrowLeft, TrendingDown, TrendingUp, AlertTriangle, Plus, Minus, Settings, Target } from 'lucide-react';
-import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts'; // Removed LineChart, Line
+import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts'; 
 import ThemeToggle from '../components/ThemeToggle';
 
 // --- MOCK DATA GENERATORS ---
@@ -43,7 +43,7 @@ const generateHistoryData = (currentQty, range) => {
   return data;
 };
 
-// Simple mock data for the "Sparkline" in the Usage Card
+// Simple mock data for sparkline
 const sparklineData = [
   { val: 40 }, { val: 30 }, { val: 45 }, { val: 50 }, { val: 35 }, { val: 55 }, { val: 40 }, { val: 60 }
 ];
@@ -138,8 +138,9 @@ export default function InventoryDetailPage() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-8 transition-colors duration-200">
       <div className="flex justify-between items-center mb-8">
         <div className="flex items-center gap-4">
-          <Link to="/inventory" className="p-2 bg-white dark:bg-gray-800 rounded-full border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-            <ArrowLeft size={20} className="text-gray-600 dark:text-gray-300" />
+          {/* UPDATED BACK BUTTON STYLE */}
+          <Link to="/inventory" className="p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all shadow-sm">
+            <ArrowLeft size={20} />
           </Link>
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
@@ -149,7 +150,9 @@ export default function InventoryDetailPage() {
             <p className="text-gray-500 dark:text-gray-400 text-sm">SKU: INV-{item.id.toString().padStart(4, '0')}</p>
           </div>
         </div>
-        <ThemeToggle />
+        
+        {/* UPDATED THEME TOGGLE STYLE */}
+        <ThemeToggle className="p-2.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all shadow-sm" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
