@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Calendar, Clock, ArrowLeft, Search, Mail, CheckCircle, XCircle, AlertCircle, CalendarRange, Filter, X, Stethoscope, MessageSquare, ClipboardList, HelpCircle, Bell } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom'; // Added useNavigate
 import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
 import toast, { Toaster } from 'react-hot-toast'; 
@@ -12,6 +12,8 @@ export default function BookingsPage() {
   const [filteredBookings, setFilteredBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   
+  const navigate = useNavigate(); // Initialize Navigation Hook
+
   // Filter States
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedService, setSelectedService] = useState('All');
@@ -22,7 +24,6 @@ export default function BookingsPage() {
 
   const WORKSPACE_ID = 1;
 
-  // 1. Fetch Data
   useEffect(() => {
     axios.get(`http://localhost:5000/api/bookings/${WORKSPACE_ID}`)
       .then(response => {
@@ -34,22 +35,17 @@ export default function BookingsPage() {
       .catch(err => console.error("Failed to load bookings", err));
   }, []);
 
-  // 2. Responsive Toast Logic
+  // Responsive Toast Logic
   useEffect(() => {
-    const media = window.matchMedia('(max-width: 1024px)'); // Tablet & Mobile breakpoint
+    const media = window.matchMedia('(max-width: 1024px)');
     const updatePosition = (e) => setToastPosition(e.matches ? 'top-center' : 'bottom-right');
-    
-    // Set initial
     updatePosition(media);
-    
-    // Listen for resize
     media.addEventListener('change', updatePosition);
     return () => media.removeEventListener('change', updatePosition);
   }, []);
 
   const uniqueServices = ['All', ...new Set(bookings.map(b => b.service_type))];
 
-  // 3. Filter Logic
   useEffect(() => {
     const lowerQuery = searchQuery.toLowerCase();
     
@@ -88,10 +84,24 @@ export default function BookingsPage() {
       });
   };
 
-  const handleMessage = (name) => {
-      toast.loading(`Opening chat with ${name}...`, {
-        duration: 2000,
-      });
+  // UPDATED: Navigate to Inbox with Data
+  const handleMessage = (booking) => {
+      // 1. Show feedback
+      toast.loading(`Opening chat with ${booking.name}...`, { duration: 1000 });
+      
+      // 2. Redirect to Inbox Page and pass the booking data
+      // You can access this data in InboxPage using: const { state } = useLocation();
+      setTimeout(() => {
+        navigate('/inbox', { 
+            state: { 
+                startChat: {
+                    name: booking.name,
+                    email: booking.email,
+                    id: booking.id // or userId if available
+                } 
+            } 
+        });
+      }, 500); // Small delay for the toast to be seen
   };
 
   // --- BADGES ---
@@ -131,7 +141,7 @@ export default function BookingsPage() {
       
       {/* --- RESPONSIVE TOASTER --- */}
       <Toaster 
-        position={toastPosition} // Dynamic Position
+        position={toastPosition}
         toastOptions={{
             className: 'dark:bg-gray-800 dark:text-white bg-white text-gray-900',
             style: {
@@ -340,13 +350,13 @@ export default function BookingsPage() {
                     <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                         {filteredBookings.map((booking) => (
                         <tr key={booking.id} className="hover:bg-blue-50/50 dark:hover:bg-gray-700/30 transition-colors group cursor-default">
-                            {/* Customer (Left) */}
+                            {/* Customer */}
                             <td className="p-5">
                                 <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold shadow-sm group-hover:scale-105 transition-transform flex-shrink-0">
+                                    <div className="w-10 h-10 rounded-full bg-linear-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold shadow-sm group-hover:scale-105 transition-transform shrink-0">
                                         {booking.name.charAt(0)}
                                     </div>
-                                    <div className="text-left min-w-[140px]">
+                                    <div className="text-left min-w-35">
                                         <div className="font-semibold text-gray-900 dark:text-white truncate">{booking.name}</div>
                                         <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 mt-0.5 truncate">
                                             <Mail size={12} /> {booking.email}
@@ -354,15 +364,13 @@ export default function BookingsPage() {
                                     </div>
                                 </div>
                             </td>
-                            
-                            {/* Service (Center) */}
+                            {/* Service */}
                             <td className="p-5 whitespace-nowrap">
                                 <div className="flex justify-center">
                                     {getServiceBadge(booking.service_type)}
                                 </div>
                             </td>
-                            
-                            {/* Date (Center) */}
+                            {/* Date */}
                             <td className="p-5 whitespace-nowrap">
                                 <div className="flex flex-col items-center gap-1">
                                     <span className="flex items-center gap-2 text-sm font-medium text-gray-900 dark:text-white">
@@ -375,11 +383,9 @@ export default function BookingsPage() {
                                     </span>
                                 </div>
                             </td>
-                            
-                            {/* Status (Center) */}
+                            {/* Status */}
                             <td className="p-5 whitespace-nowrap text-center">{getStatusBadge(booking.status)}</td>
-                            
-                            {/* Actions (Center) */}
+                            {/* Actions */}
                             <td className="p-5 whitespace-nowrap">
                                 <div className="flex justify-center gap-2"> 
                                     <button 
@@ -390,7 +396,7 @@ export default function BookingsPage() {
                                         <Bell size={18} />
                                     </button>
                                     <button 
-                                        onClick={() => handleMessage(booking.name)}
+                                        onClick={() => handleMessage(booking)} // Pass full object
                                         className="p-2 text-gray-500 hover:text-green-600 bg-gray-100 dark:bg-gray-800 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors border border-transparent hover:border-green-100 dark:hover:border-green-900" 
                                         title="Message Customer"
                                     >
@@ -411,7 +417,7 @@ export default function BookingsPage() {
                     <div key={booking.id} className="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm relative overflow-hidden hover:bg-blue-50/50 dark:hover:bg-gray-700/30 transition-colors">
                         <div className="absolute top-4 right-4">{getStatusBadge(booking.status)}</div>
                         <div className="flex items-center gap-4 mb-5 pr-20">
-                            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-lg shadow-sm">
+                            <div className="w-12 h-12 rounded-full bg-linear-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-lg shadow-sm">
                                 {booking.name.charAt(0)}
                             </div>
                             <div className="min-w-0">
@@ -445,7 +451,7 @@ export default function BookingsPage() {
                                 <Bell size={14} /> Remind
                             </button>
                             <button 
-                                onClick={() => handleMessage(booking.name)}
+                                onClick={() => handleMessage(booking)} // Pass full object
                                 className="flex items-center justify-center gap-2 p-2 rounded-lg bg-gray-50 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300 font-medium text-xs hover:bg-green-50 dark:hover:bg-green-900/20 hover:text-green-600 transition-colors"
                             >
                                 <MessageSquare size={14} /> Message
