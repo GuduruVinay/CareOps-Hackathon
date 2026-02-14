@@ -192,7 +192,6 @@ app.put('/api/inventory/:id', async (req, res) => {
   }
 });
 
-// 8. POST Trigger Reminder (FIXED TIMEZONE)
 app.post('/api/bookings/:id/remind', async (req, res) => {
   const { type } = req.body; 
   try {
@@ -208,11 +207,8 @@ app.post('/api/bookings/:id/remind', async (req, res) => {
 
     const booking = bookingRes.rows[0];
     
-    // Create Date object from database timestamp
-    const dbDate = new Date(booking.start_time);
-    
-    // FORMAT: Force Indian Standard Time (Asia/Kolkata)
-    const dateStr = dbDate.toLocaleString('en-IN', { 
+    // Convert DB timestamp directly to IST string
+    const dateStr = new Date(booking.start_time).toLocaleString('en-IN', { 
         timeZone: 'Asia/Kolkata', 
         weekday: 'long', 
         year: 'numeric', 
@@ -225,11 +221,10 @@ app.post('/api/bookings/:id/remind', async (req, res) => {
 
     const intakeFormUrl = `${CLIENT_URL}/form/${booking.id}`;
     
-    // Calendar Logic
+    // Calendar URL logic using the exact start_time
     const startTime = new Date(booking.start_time);
-    const endTime = new Date(startTime.getTime() + 60 * 60 * 1000); 
     const formatGCalTime = (date) => date.toISOString().replace(/-|:|\.\d\d\d/g, "");
-    const gCalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(booking.service_type)}&dates=${formatGCalTime(startTime)}/${formatGCalTime(endTime)}&details=${encodeURIComponent("Intake Form: " + intakeFormUrl)}`;
+    const gCalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(booking.service_type)}&dates=${formatGCalTime(startTime)}/${formatGCalTime(startTime)}&details=${encodeURIComponent("Intake Form: " + intakeFormUrl)}`;
 
     if (type === 'email' && process.env.SENDGRID_API_KEY) {
         const msg = {
@@ -238,40 +233,25 @@ app.post('/api/bookings/:id/remind', async (req, res) => {
           subject: `✅ Confirmed: ${booking.service_type} on ${dateStr}`,
           html: `
             <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
-              
               <div style="background-color: #2563eb; padding: 24px; text-align: center;">
                 <h1 style="color: #ffffff; margin: 0; font-size: 24px;">Booking Confirmed!</h1>
               </div>
-
               <div style="padding: 32px 24px;">
                 <p style="font-size: 16px; color: #374151; margin-top: 0;">Hi <strong>${booking.name}</strong>,</p>
                 <p style="font-size: 16px; color: #374151;">Your appointment is officially scheduled.</p>
-                
                 <div style="background-color: #f3f4f6; padding: 20px; border-radius: 12px; margin: 24px 0; text-align: center; border: 1px solid #e5e7eb;">
                   <p style="margin: 0; font-size: 13px; color: #6b7280; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">Date & Time</p>
                   <p style="margin: 8px 0 4px 0; font-size: 20px; color: #111827; font-weight: bold;">${dateStr}</p>
                   <p style="margin: 0; color: #2563eb; font-weight: 500;">${booking.service_type}</p>
                 </div>
-
                 <div style="margin-bottom: 20px; text-align: center;">
-                  <p style="color: #dc2626; font-weight: bold; font-size: 14px; margin-bottom: 12px;">Action Required:</p>
-                  <a href="${intakeFormUrl}" style="display: inline-block; background-color: #2563eb; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">
-                    Complete Intake Form
-                  </a>
+                  <a href="${intakeFormUrl}" style="display: inline-block; background-color: #2563eb; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">Complete Intake Form</a>
                 </div>
-
                 <div style="text-align: center;">
-                  <a href="${gCalUrl}" style="display: inline-block; background-color: #ffffff; color: #374151; padding: 12px 24px; text-decoration: none; border: 2px solid #e5e7eb; border-radius: 8px; font-weight: 600; font-size: 14px;">
-                    📅 Add to Google Calendar
-                  </a>
+                  <a href="${gCalUrl}" style="display: inline-block; background-color: #ffffff; color: #374151; padding: 12px 24px; text-decoration: none; border: 2px solid #e5e7eb; border-radius: 8px; font-weight: 600; font-size: 14px;">📅 Add to Google Calendar</a>
                 </div>
               </div>
-              
-              <div style="background-color: #f9fafb; padding: 16px; text-align: center; font-size: 12px; color: #9ca3af; border-top: 1px solid #e5e7eb;">
-                <p style="margin: 0;">Need to reschedule? Reply to this email.</p>
-              </div>
-            </div>
-          `,
+            </div>`,
         };
         await sgMail.send(msg);
     } 
@@ -361,25 +341,18 @@ app.post('/api/login', (req, res) => {
   }
 });
 
-// 11. CANCEL BOOKING (FIXED TIMEZONE)
 app.put('/api/bookings/:id/cancel', async (req, res) => {
   const { id } = req.params;
   try {
     const result = await pool.query(`UPDATE bookings SET status = 'CANCELLED' WHERE id = $1 RETURNING *`, [id]);
-    
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: "Booking not found" });
-    }
+    if (result.rows.length === 0) return res.status(404).json({ error: "Booking not found" });
 
     const booking = result.rows[0];
     const contactRes = await pool.query(`SELECT * FROM contacts WHERE id = $1`, [booking.contact_id]);
     const contact = contactRes.rows[0];
     
-    // Create Date object from database timestamp
-    const dbDate = new Date(booking.start_time);
-    
-    // FORMAT: Force Indian Standard Time (Asia/Kolkata) for the cancellation notice
-    const bookingDate = dbDate.toLocaleString('en-IN', { 
+    // Convert DB timestamp directly to IST string
+    const bookingDate = new Date(booking.start_time).toLocaleString('en-IN', { 
       timeZone: 'Asia/Kolkata', 
       weekday: 'short', 
       year: 'numeric', 
@@ -396,35 +369,19 @@ app.put('/api/bookings/:id/cancel', async (req, res) => {
           from: process.env.SENDGRID_FROM_EMAIL,
           subject: `❌ Cancelled: ${booking.service_type}`,
           html: `
-            <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e5e7eb; border-radius: 12px; background-color: #ffffff;">
-              <div style="text-align: center; margin-bottom: 24px;">
-                <div style="display: inline-block; background-color: #fee2e2; padding: 16px; rounded-full; margin-bottom: 16px;">
-                   <span style="font-size: 32px;">⚠️</span>
-                </div>
-                <h2 style="color: #dc2626; margin: 0; font-size: 24px;">Appointment Cancelled</h2>
-              </div>
-              
-              <p style="color: #374151; font-size: 16px; line-height: 1.5;">Hi <strong>${contact.name}</strong>,</p>
-              <p style="color: #374151; font-size: 16px; line-height: 1.5;">
-                Your appointment for <strong>${booking.service_type}</strong> previously scheduled for <strong>${bookingDate}</strong> has been successfully cancelled.
+            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e5e7eb; border-radius: 12px;">
+              <h2 style="color: #dc2626; text-align: center;">Appointment Cancelled</h2>
+              <p style="text-align: center; color: #4b5563;">Hi <strong>${contact.name}</strong>,</p>
+              <p style="text-align: center; color: #4b5563;">
+                Your appointment for <strong>${booking.service_type}</strong> on <strong>${bookingDate}</strong> has been cancelled.
               </p>
-              
-              <div style="background-color: #f9fafb; padding: 20px; border-radius: 8px; margin: 24px 0; border: 1px solid #e5e7eb; text-align: center;">
-                <p style="margin: 0; color: #6b7280; font-size: 14px; font-weight: bold;">If this was a mistake or you'd like to rebook, please visit our portal or reply to this email.</p>
-              </div>
-              
-              <p style="text-align: center; color: #9ca3af; font-size: 14px; margin-top: 32px;">
-                Regards,<br/>
-                <strong>CareOps Team</strong>
-              </p>
-            </div>
-          `
+              <p style="text-align: center; color: #9ca3af; font-size: 14px;">Regards,<br/>CareOps Team</p>
+            </div>`
         };
         await sgMail.send(msg);
     }
     res.json({ success: true, booking: result.rows[0] });
   } catch (err) {
-    console.error("Cancellation Error:", err);
     res.status(500).json({ error: "Failed to cancel booking" });
   }
 });
