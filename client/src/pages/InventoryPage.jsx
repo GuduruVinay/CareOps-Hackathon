@@ -62,8 +62,8 @@ export default function InventoryPage() {
               <Boxes size={24} />
             </div>
             <div>
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Inventory Overview</h1>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Manage your clinic's supply chain</p>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Inventory <span className="hidden md:block">Overview</span></h1>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Manage your clinic's supply</p>
              </div>
           </div>
         </div>

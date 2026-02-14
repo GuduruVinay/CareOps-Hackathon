@@ -182,7 +182,7 @@ export default function InventoryDetailPage() {
                         <input type="number" value={restockAmount} onChange={(e) => setRestockAmount(e.target.value)} className="w-14 bg-transparent text-gray-900 dark:text-white font-bold text-center outline-none border-none p-0"/>
                         <button onClick={incrementRestock} className="p-3 px-4 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"><Plus size={16} /></button>
                     </div>
-                    <button onClick={handleRestock} className="flex-1 bg-gray-900 dark:bg-blue-600 text-white rounded-xl font-bold hover:opacity-90 transition-all flex items-center justify-center gap-2"><Plus size={18} /> Add Stock</button>
+                    <button onClick={handleRestock} className="flex-1 bg-gray-900 dark:bg-blue-600 text-white rounded-xl font-bold hover:opacity-90 transition-all flex items-center justify-center gap-2"><Plus size={18} /> Add <span className="hidden md:block">Stock</span></button>
                 </div>
             </div>
           </div>
@@ -296,7 +296,7 @@ export default function InventoryDetailPage() {
         <div className="lg:col-span-2 space-y-6">
           <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 h-96 flex flex-col">
             <div className="flex justify-between items-center mb-6">
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Stock Level History</h3>
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white"><span className="hidden md:block">Stock Level</span> History</h3>
                 <div className="flex bg-gray-100 dark:bg-gray-700 p-1 rounded-lg">
                     {['7D', '1M', '6M', '1Y'].map((range) => (
                         <button key={range} onClick={() => setTimeRange(range)} className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${timeRange === range ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'}`}>{range}</button>
