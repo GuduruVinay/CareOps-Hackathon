@@ -7,14 +7,12 @@ const cors = require('cors');
 const sgMail = require('@sendgrid/mail');
 const twilio = require('twilio');
 
-// Initialize SendGrid
 if (process.env.SENDGRID_API_KEY) {
   sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 } else {
   console.warn("⚠️  Missing SENDGRID_API_KEY. Emails will not be sent.");
 }
 
-// Initialize Twilio
 let twilioClient;
 if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {
   twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
@@ -31,7 +29,6 @@ const pool = new Pool({
   ssl: { rejectUnauthorized: false }
 });
 
-// --- HELPER: Mock Automation Logic ---
 async function runAutomation(triggerType, data) {
   console.log(`[AUTOMATION TRIGGERED] Type: ${triggerType}`, data);
 }
@@ -58,7 +55,7 @@ app.get('/api/dashboard/:workspaceId', async (req, res) => {
   }
 });
 
-// 2. GET All Bookings (Now includes intake_status)
+// 2. GET All Bookings
 app.get('/api/bookings/:workspaceId', async (req, res) => {
   const { workspaceId } = req.params;
   try {
@@ -160,10 +157,9 @@ app.put('/api/inventory/:id', async (req, res) => {
   }
 });
 
-// 8. POST Trigger Reminder (FIXED TIMEZONE + INTAKE LINK)
+// 8. POST Trigger Reminder
 app.post('/api/bookings/:id/remind', async (req, res) => {
   const { type } = req.body; 
-  
   try {
     const bookingRes = await pool.query(
       `SELECT b.*, c.name, c.email, c.phone 
@@ -173,27 +169,19 @@ app.post('/api/bookings/:id/remind', async (req, res) => {
       [req.params.id]
     );
 
-    if (bookingRes.rows.length === 0) {
-      return res.status(404).json({ error: "Booking not found" });
-    }
+    if (bookingRes.rows.length === 0) return res.status(404).json({ error: "Booking not found" });
 
     const booking = bookingRes.rows[0];
     const dbDate = new Date(booking.start_time);
-
-    // --- TIMEZONE FIX ---
-    // Manually add 5.5 hours (19,800,000 ms) to convert UTC to IST
-    // Then print as UTC to maintain the shifted value (e.g., 17:00 stays 17:00)
     const istOffset = 19800000; 
     const istDate = new Date(dbDate.getTime() + istOffset);
     
     const dateStr = istDate.toLocaleString('en-US', { 
-        timeZone: 'UTC', 
-        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', 
+        timeZone: 'UTC', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', 
         hour: 'numeric', minute: '2-digit', hour12: true 
     });
 
     const intakeFormUrl = `http://localhost:3000/form/${booking.id}`;
-    
     const startTime = new Date(booking.start_time);
     const endTime = new Date(startTime.getTime() + 60 * 60 * 1000); 
     const formatGCalTime = (date) => date.toISOString().replace(/-|:|\.\d\d\d/g, "");
@@ -205,42 +193,24 @@ app.post('/api/bookings/:id/remind', async (req, res) => {
           from: process.env.SENDGRID_FROM_EMAIL,
           subject: `✅ Confirmed: ${booking.service_type} on ${dateStr}`,
           html: `
-            <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; background-color: #ffffff;">
-              <div style="background-color: #2563eb; padding: 24px; text-align: center;">
-                <h1 style="color: #ffffff; margin: 0; font-size: 24px;">Booking Confirmed!</h1>
+            <div style="font-family: sans-serif; max-width: 600px; margin: auto; border: 1px solid #eee; border-radius: 8px;">
+              <div style="background-color: #2563eb; padding: 20px; text-align: center; color: white;">
+                <h2 style="margin:0;">Booking Confirmed!</h2>
               </div>
-              <div style="padding: 32px 24px;">
-                <p style="font-size: 16px; color: #374151; margin-top: 0;">Hi <strong>${booking.name}</strong>,</p>
-                
-                <div style="background-color: #f3f4f6; padding: 20px; border-radius: 12px; margin: 24px 0; text-align: center; border: 1px solid #e5e7eb;">
-                  <p style="margin: 0; font-size: 13px; color: #6b7280; text-transform: uppercase; font-weight: bold;">Date & Time</p>
-                  <p style="margin: 8px 0 4px 0; font-size: 20px; color: #111827; font-weight: bold;">${dateStr}</p>
-                  <p style="margin: 0; color: #2563eb; font-weight: 500;">${booking.service_type}</p>
-                </div>
-
-                <div style="margin-bottom: 20px; text-align: center;">
-                  <p style="color: #dc2626; font-weight: bold; font-size: 14px; margin-bottom: 12px;">Action Required:</p>
-                  <a href="${intakeFormUrl}" style="display: inline-block; background-color: #2563eb; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">
-                    Complete Intake Form
-                  </a>
-                </div>
-
-                <div style="text-align: center;">
-                  <a href="${gCalUrl}" style="display: inline-block; background-color: #ffffff; color: #374151; padding: 12px 24px; text-decoration: none; border: 2px solid #e5e7eb; border-radius: 8px; font-weight: 600; font-size: 14px;">
-                    📅 Add to Google Calendar
-                  </a>
+              <div style="padding: 20px;">
+                <p>Hi <strong>${booking.name}</strong>,</p>
+                <p>Your appointment is confirmed for <strong>${dateStr}</strong>.</p>
+                <div style="text-align:center; margin-top:20px;">
+                  <a href="${intakeFormUrl}" style="background:#2563eb; color:white; padding:10px 20px; text-decoration:none; border-radius:5px;">Complete Intake Form</a>
                 </div>
               </div>
-            </div>
-          `,
+            </div>`
         };
         await sgMail.send(msg);
-        console.log(`[SendGrid] Reminder sent to ${booking.email}`);
     } 
-    
-    res.json({ success: true, message: `Email sent to ${booking.name}` });
+    res.json({ success: true });
   } catch (err) {
-    console.error("Reminder Error:", err.message);
+    console.error(err);
     res.status(500).send("Server Error");
   }
 });
@@ -257,10 +227,8 @@ app.get('/api/assistant', async (req, res) => {
   const customerSuggestions = ["Book an appointment", "Check pricing", "Available slots?", "Reschedule booking", "Contact Support"];
 
   try {
-    // --- ADMIN CONTEXT LOGIC ---
     if (context === 'admin') {
       suggestions = adminSuggestions; 
-
       if (lowerQuery.includes('today') || lowerQuery.includes('booking')) {
         const result = await pool.query(
           `SELECT c.name, b.start_time, b.service_type FROM bookings b JOIN contacts c ON b.contact_id = c.id WHERE b.workspace_id = $1 AND b.start_time::date = CURRENT_DATE ORDER BY b.start_time ASC`, [workspaceId]
@@ -272,7 +240,7 @@ app.get('/api/assistant', async (req, res) => {
           responseText = "📅 You have no bookings scheduled for today.";
         }
       } 
-      else if (lowerQuery.includes('stock') || lowerQuery.includes('low') || lowerQuery.includes('inventory')) {
+      else if (lowerQuery.includes('stock') || lowerQuery.includes('low')) {
         const result = await pool.query(`SELECT item_name, quantity FROM inventory WHERE workspace_id = $1 AND quantity < low_stock_threshold`, [workspaceId]);
         if (result.rows.length > 0) {
           const list = result.rows.map(i => `• ${i.item_name}: ${i.quantity} left`).join('\n');
@@ -288,190 +256,123 @@ app.get('/api/assistant', async (req, res) => {
         responseText = "Hello Admin! I can help you monitor your clinic operations. Select an option below:";
       }
     } 
-    
-    // --- CUSTOMER CONTEXT LOGIC (FIXED) ---
     else if (context === 'customer') {
       suggestions = customerSuggestions;
-
-      if (lowerQuery.includes('price') || lowerQuery.includes('cost') || lowerQuery.includes('much')) {
+      if (lowerQuery.includes('price') || lowerQuery.includes('cost')) {
         responseText = "💰 **Our Pricing:**\n• General Checkup: $50\n• Specialist Consultation: $120\n• Follow-up Visit: $30";
       }
       else if (lowerQuery.includes('book') || lowerQuery.includes('appointment')) {
         responseText = "🗓️ **To book:**\nSimply select a service from the list on the left, choose a date, and pick a time slot.";
       }
       else if (lowerQuery.includes('slot') || lowerQuery.includes('avail')) {
-        responseText = "🕒 **Availability:**\nYou can see real-time availability on the calendar. If a slot is grayed out, it has already been booked.";
+        responseText = "🕒 **Availability:**\nYou can see real-time availability on the calendar.";
       }
       else if (lowerQuery.includes('reschedule') || lowerQuery.includes('cancel')) {
-        responseText = "🔄 **Rescheduling:**\nPlease check your confirmation email for a reschedule link, or contact our support team.";
+        responseText = "🔄 **Rescheduling:**\nPlease check your confirmation email for a reschedule link.";
       }
-      else if (lowerQuery.includes('support') || lowerQuery.includes('help') || lowerQuery.includes('contact')) {
-        responseText = "📞 **Support:**\nYou can reach us at support@careops.com or call +1 (555) 012-3456.";
+      else if (lowerQuery.includes('support') || lowerQuery.includes('help')) {
+        responseText = "📞 **Support:**\nYou can reach us at support@careops.com.";
       }
       else {
         responseText = "👋 I am the CareOps virtual assistant. I can help you with pricing, scheduling, and general questions.";
       }
     }
-
     res.json({ reply: responseText, suggestions: suggestions, action: null });
-
   } catch (err) {
     console.error(err);
     res.status(500).json({ reply: "Server error.", suggestions: [] });
   }
 });
 
-// 10. LOGIN ENDPOINT
+// 10. LOGIN
 app.post('/api/login', (req, res) => {
   const { email, password } = req.body;
-  const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@careops.com';
-  const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
-
-  if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
-    res.json({ success: true, token: 'mock-admin-token-123', user: { name: 'Admin User', email: ADMIN_EMAIL } });
+  if (email === (process.env.ADMIN_EMAIL || 'admin@careops.com') && password === (process.env.ADMIN_PASSWORD || 'admin123')) {
+    res.json({ success: true, token: 'mock-admin-token-123', user: { name: 'Admin User', email } });
   } else {
     res.status(401).json({ success: false, message: 'Invalid credentials' });
   }
 });
 
-// 11. CANCEL BOOKING ENDPOINT (FIXED TIMEZONE)
+// 11. CANCEL BOOKING
 app.put('/api/bookings/:id/cancel', async (req, res) => {
   const { id } = req.params;
-
   try {
-    const result = await pool.query(
-      `UPDATE bookings SET status = 'CANCELLED' WHERE id = $1 RETURNING *`,
-      [id]
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: "Booking not found" });
-    }
+    const result = await pool.query(`UPDATE bookings SET status = 'CANCELLED' WHERE id = $1 RETURNING *`, [id]);
+    if (result.rows.length === 0) return res.status(404).json({ error: "Booking not found" });
 
     const booking = result.rows[0];
     const contactRes = await pool.query(`SELECT * FROM contacts WHERE id = $1`, [booking.contact_id]);
     const contact = contactRes.rows[0];
     
-    // --- TIMEZONE FIX ---
     const dbDate = new Date(booking.start_time);
-    const istOffset = 19800000; // 5.5 hours in ms
+    const istOffset = 19800000;
     const istDate = new Date(dbDate.getTime() + istOffset);
-    
-    const bookingDate = istDate.toLocaleString('en-US', { 
-        timeZone: 'UTC', 
-        weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true
-    });
+    const bookingDate = istDate.toLocaleString('en-US', { timeZone: 'UTC', weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
 
     if (process.env.SENDGRID_API_KEY) {
         const msg = {
           to: contact.email,
           from: process.env.SENDGRID_FROM_EMAIL,
-          subject: `❌ Cancelled: ${booking.service_type} on ${bookingDate}`,
-          html: `
-            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e5e7eb; border-radius: 12px; background-color: #fff;">
-              <h2 style="color: #dc2626; text-align: center; margin-top: 0;">Appointment Cancelled</h2>
-              <p style="text-align: center; color: #4b5563;">Hi <strong>${contact.name}</strong>,</p>
-              <p style="text-align: center; color: #4b5563;">
-                Your appointment for <strong>${booking.service_type}</strong> on <strong>${bookingDate}</strong> has been cancelled.
-              </p>
-              <div style="background-color: #fef2f2; padding: 16px; border-radius: 8px; margin: 24px 0; border: 1px solid #fecaca; text-align: center;">
-                <p style="margin: 0; color: #991b1b; font-weight: bold;">If this was a mistake, please contact us.</p>
-              </div>
-              <p style="text-align: center; color: #9ca3af; font-size: 14px;">Regards,<br/>CareOps Team</p>
-            </div>
-          `
+          subject: `❌ Cancelled: ${booking.service_type}`,
+          html: `<div style="font-family:sans-serif; padding:20px;"><h2>Appointment Cancelled</h2><p>Your appointment on <strong>${bookingDate}</strong> has been cancelled.</p></div>`
         };
         await sgMail.send(msg);
-        console.log(`Cancellation email sent to ${contact.email}`);
     }
-
     res.json({ success: true, booking: result.rows[0] });
-
   } catch (err) {
-    console.error(err);
     res.status(500).json({ error: "Failed to cancel booking" });
   }
 });
 
-// 12. GET/PUT Settings
-app.get('/api/workspace/:id', (req, res) => {
-    res.json({ name: "CareOps", business_hours_start: "09:00", business_hours_end: "17:00" });
-});
-app.put('/api/workspace/:id', (req, res) => {
-    res.json({ success: true });
-});
+// 12. WORKSPACE SETTINGS
+app.get('/api/workspace/:id', (req, res) => res.json({ name: "CareOps", business_hours_start: "09:00", business_hours_end: "17:00" }));
+app.put('/api/workspace/:id', (req, res) => res.json({ success: true }));
 
-// 13. INTAKE FORM ENDPOINTS
+// 13. INTAKE FORM
 app.get('/api/bookings/:id', async (req, res) => {
   try {
-    const { id } = req.params;
-    const result = await pool.query(
-      `SELECT b.id, b.service_type, b.start_time, c.name, c.email 
-       FROM bookings b 
-       JOIN contacts c ON b.contact_id = c.id 
-       WHERE b.id = $1`,
-      [id]
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: "Booking not found" });
-    }
-
+    const result = await pool.query(`SELECT b.id, b.service_type, b.start_time, c.name, c.email FROM bookings b JOIN contacts c ON b.contact_id = c.id WHERE b.id = $1`, [req.params.id]);
+    if (result.rows.length === 0) return res.status(404).json({ error: "Not found" });
     res.json(result.rows[0]);
-  } catch (err) {
-    console.error(err);
-    res.status(500).send("Server Error");
-  }
+  } catch (err) { res.status(500).send("Server Error"); }
 });
 
-// UPDATE INTAKE STATUS
 app.post('/api/bookings/:id/intake', async (req, res) => {
   const { id } = req.params;
   const formData = req.body;
-
   try {
-    // Save to DB (Update status to COMPLETED)
     await pool.query(`UPDATE bookings SET intake_status = 'COMPLETED' WHERE id = $1`, [id]);
-    
     console.log(`📝 Intake Received for Booking ${id}:`, formData);
     runAutomation('INTAKE_SUBMITTED', { bookingId: id, data: formData });
-
-    res.json({ success: true, message: "Intake saved successfully" });
-  } catch (err) {
-    console.error(err);
-    res.status(500).send("Failed to save intake");
-  }
+    res.json({ success: true, message: "Intake saved" });
+  } catch (err) { res.status(500).send("Failed to save intake"); }
 });
 
-// 14. GET SINGLE INVENTORY ITEM (With Stats)
+// 14. INVENTORY ITEM DETAILS
 app.get('/api/inventory/item/:id', async (req, res) => {
   const { id } = req.params;
   try {
     const result = await pool.query('SELECT * FROM inventory WHERE id = $1', [id]);
-    
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: "Item not found" });
-    }
-
+    if (result.rows.length === 0) return res.status(404).json({ error: "Not found" });
     const item = result.rows[0];
-
-    // Mock usage stats
     const mockMonthlyUsage = 50 + ((item.id * 17) % 400); 
-    
-    let status = 'In Stock';
-    if (item.quantity === 0) status = 'Out of Stock';
-    else if (item.quantity < item.low_stock_threshold) status = 'Low Stock';
+    let status = item.quantity === 0 ? 'Out of Stock' : (item.quantity < item.low_stock_threshold ? 'Low Stock' : 'In Stock');
+    res.json({ ...item, status, monthly_usage: mockMonthlyUsage, last_restock: new Date(Date.now() - (item.id * 86400000)).toLocaleDateString() });
+  } catch (err) { res.status(500).send("Server Error"); }
+});
 
-    res.json({
-      ...item,
-      status,
-      monthly_usage: mockMonthlyUsage,
-      last_restock: new Date(Date.now() - (item.id * 86400000)).toLocaleDateString()
-    });
-
+// 15. UPDATE BOOKING STATUS (FIX FOR 404)
+app.put('/api/bookings/:id/status', async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body; 
+  try {
+    const result = await pool.query(`UPDATE bookings SET status = $1 WHERE id = $2 RETURNING *`, [status, id]);
+    if (result.rows.length === 0) return res.status(404).json({ error: "Booking not found" });
+    res.json({ success: true, booking: result.rows[0] });
   } catch (err) {
     console.error(err);
-    res.status(500).send("Server Error");
+    res.status(500).json({ error: "Failed to update status" });
   }
 });
 
