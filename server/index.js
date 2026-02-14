@@ -482,6 +482,6 @@ app.put('/api/staff/:id', async (req, res) => {
   } catch (err) { res.status(500).send("Failed to update staff"); }
 });
 
-app.listen(port, () => {
+app.listen(port, '0.0.0.0', () => {
   console.log(`Server running on port ${port}`);
 });
