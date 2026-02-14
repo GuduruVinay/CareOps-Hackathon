@@ -8,6 +8,7 @@ import {
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts'; 
 import ThemeToggle from '../components/ThemeToggle';
 import LoadingThrobber from '../components/LoadingThrobber';
+import { API_URL } from '../../config';
 
 // --- MOCK DATA GENERATORS ---
 const generateHistoryData = (currentQty, range) => {

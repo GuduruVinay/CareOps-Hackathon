@@ -7,6 +7,7 @@ import { Link } from 'react-router-dom';
 import ThemeToggle from '../components/ThemeToggle';
 import LoadingThrobber from '../components/LoadingThrobber';
 import toast, { Toaster } from 'react-hot-toast';
+import { API_URL } from '../../config';
 
 export default function StaffPage() {
   const [staff, setStaff] = useState([]);

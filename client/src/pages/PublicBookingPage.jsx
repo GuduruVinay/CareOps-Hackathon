@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import ThemeToggle from '../components/ThemeToggle';
 import AIAssistant from '../components/AIAssistant';
+import { API_URL } from '../../config';
 
 export default function PublicBookingForm() {
   const [step, setStep] = useState(1);

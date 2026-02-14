@@ -8,6 +8,7 @@ import {
 import ThemeToggle from '../components/ThemeToggle';
 import AIAssistant from '../components/AIAssistant';
 import LoadingThrobber from '../components/LoadingThrobber';
+import { API_URL } from '../../config';
 
 export default function Dashboard() {
   const [stats, setStats] = useState({

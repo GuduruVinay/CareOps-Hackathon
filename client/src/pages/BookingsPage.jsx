@@ -12,6 +12,7 @@ import "react-datepicker/dist/react-datepicker.css";
 import toast, { Toaster } from 'react-hot-toast'; 
 import ThemeToggle from '../components/ThemeToggle';
 import LoadingThrobber from '../components/LoadingThrobber';
+import { API_URL } from '../../config';
 
 export default function BookingsPage() {
   const [bookings, setBookings] = useState([]);

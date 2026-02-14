@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { Mic, Send, X, MessageSquare, RotateCcw, Phone, Mail, MicOff, AlertCircle } from 'lucide-react';
+import { API_URL } from '../../config';
 
 export default function AIAssistant({ context = 'customer' }) {
   const [isOpen, setIsOpen] = useState(false);

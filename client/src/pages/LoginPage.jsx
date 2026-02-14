@@ -3,6 +3,7 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { Lock, Mail, ArrowRight, Activity } from 'lucide-react';
 import ThemeToggle from '../components/ThemeToggle'; // Import the toggle
+import { API_URL } from '../../config';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');

@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import { PieChart, Pie, ResponsiveContainer } from 'recharts';
 import ThemeToggle from '../components/ThemeToggle';
 import LoadingThrobber from '../components/LoadingThrobber';
+import { API_URL } from '../../config';
 
 export default function InventoryPage() {
   const [inventory, setInventory] = useState([]);
