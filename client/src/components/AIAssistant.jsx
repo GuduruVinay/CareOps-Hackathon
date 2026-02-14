@@ -7,24 +7,23 @@ export default function AIAssistant({ context = 'customer' }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [showFAQs, setShowFAQs] = useState(true);
   
+  // CHANGED: Use state for FAQs so we can update them dynamically
+  const [showFAQs, setShowFAQs] = useState(true);
+  const [activeSuggestions, setActiveSuggestions] = useState([]);
+
   useEffect(() => {
     const handleOpenEvent = () => {
       setIsOpen(true);
-      // Optional: Play sound when opened via event
       playBlip(); 
     };
-
     window.addEventListener('open-ai-chat', handleOpenEvent);
-
-    // Cleanup listener on unmount
     return () => window.removeEventListener('open-ai-chat', handleOpenEvent);
   }, []);
 
   // Voice State
   const [isListening, setIsListening] = useState(false);
-  const [isSpeechSupported, setIsSpeechSupported] = useState(false); // NEW: Check Support
+  const [isSpeechSupported, setIsSpeechSupported] = useState(false);
   const recognitionRef = useRef(null);
   const messagesEndRef = useRef(null);
   const audioRef = useRef(new Audio('/blip.mp3'));
@@ -44,7 +43,8 @@ export default function AIAssistant({ context = 'customer' }) {
       : "Hello! I'm your CareOps assistant. How can I help you schedule today?" 
   };
 
-  const FAQS = {
+  // Default Static FAQs for Reset
+  const DEFAULT_FAQS = {
     customer: [
       { label: "Book an appointment", query: "I want to book an appointment" },
       { label: "Check pricing", query: "How much does it cost?" },
@@ -61,16 +61,15 @@ export default function AIAssistant({ context = 'customer' }) {
     ]
   };
 
-  const currentFaqs = FAQS[context] || FAQS.customer;
-
   // --- INITIALIZATION ---
   useEffect(() => {
     setMessages([initialMessage]);
+    // Initialize suggestions based on context
+    setActiveSuggestions(DEFAULT_FAQS[context] || DEFAULT_FAQS.customer);
     setShowFAQs(true);
 
-    // BROWSER SUPPORT CHECK
+    // Browser Speech Check
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    
     if (SpeechRecognition) {
       setIsSpeechSupported(true);
       recognitionRef.current = new SpeechRecognition();
@@ -95,7 +94,7 @@ export default function AIAssistant({ context = 'customer' }) {
         setMessages(prev => [...prev, { sender: 'bot', text: "I couldn't hear you clearly. Please try again." }]);
       };
     } else {
-      setIsSpeechSupported(false); // Firefox / Unsupported Browsers
+      setIsSpeechSupported(false);
     }
   }, [context]);
 
@@ -106,6 +105,7 @@ export default function AIAssistant({ context = 'customer' }) {
   // --- HANDLERS ---
   const handleRestart = () => {
     setMessages([initialMessage]);
+    setActiveSuggestions(DEFAULT_FAQS[context] || DEFAULT_FAQS.customer);
     setShowFAQs(true);
     setInput("");
     playBlip();
@@ -115,11 +115,13 @@ export default function AIAssistant({ context = 'customer' }) {
     const query = textOverride || input;
     if (!query.trim()) return;
 
+    // 1. Hide FAQs and Add User Message
     setShowFAQs(false);
     setMessages(prev => [...prev, { sender: 'user', text: query }]);
     setInput("");
     setLoading(true);
 
+    // 2. Handle Contact Support Locally
     if (query.toLowerCase().includes('contact support')) {
         setTimeout(() => {
             setMessages(prev => [...prev, { 
@@ -129,20 +131,41 @@ export default function AIAssistant({ context = 'customer' }) {
             }]);
             playBlip();
             setLoading(false);
+            // Show default FAQs again to continue chat
+            setActiveSuggestions(DEFAULT_FAQS[context] || DEFAULT_FAQS.customer);
+            setShowFAQs(true);
         }, 600);
         return;
     }
 
+    // 3. Call Server API
     try {
       const res = await axios.get(`http://localhost:5000/api/assistant`, {
         params: { query, context }
       });
+      
       const botReply = res.data.reply;
+      const nextSuggestions = res.data.suggestions; // Get dynamic suggestions from backend
+
       setTimeout(() => {
         setMessages(prev => [...prev, { sender: 'bot', text: botReply }]);
         playBlip();
+        
+        // 4. Update Suggestions & Show FAQs again
+        if (nextSuggestions && nextSuggestions.length > 0) {
+            // Map string array ["A", "B"] to object array [{label:"A", query:"A"}]
+            const formatted = nextSuggestions.map(s => ({ label: s, query: s }));
+            setActiveSuggestions(formatted);
+            setShowFAQs(true);
+        } else {
+            // Fallback to default if no suggestions returned
+            setActiveSuggestions(DEFAULT_FAQS[context] || DEFAULT_FAQS.customer);
+            setShowFAQs(true);
+        }
+        
         setLoading(false);
       }, 600);
+
     } catch (error) {
       setMessages(prev => [...prev, { sender: 'bot', text: "I'm having trouble reaching the server right now." }]);
       setLoading(false);
@@ -150,7 +173,7 @@ export default function AIAssistant({ context = 'customer' }) {
   };
 
   const toggleListening = () => {
-    if (!isSpeechSupported) return; // Prevent action if not supported
+    if (!isSpeechSupported) return;
     if (isListening) {
         recognitionRef.current.stop();
     } else {
@@ -172,6 +195,7 @@ export default function AIAssistant({ context = 'customer' }) {
       {isOpen && (
         <div className="w-80 md:w-96 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col transition-all animate-slideUp" style={{height: '550px'}}>
             
+            {/* Header */}
             <div className="bg-blue-600 p-4 flex justify-between items-center text-white shadow-md">
                 <div className="flex items-center gap-3">
                     <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
@@ -192,8 +216,9 @@ export default function AIAssistant({ context = 'customer' }) {
                 </div>
             </div>
 
+            {/* Chat Area */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 dark:bg-gray-900 scroll-smooth">
-                {/* Fallback Warning for Firefox Users */}
+                {/* Fallback Warning */}
                 {!isSpeechSupported && (
                     <div className="flex justify-center mb-2">
                         <div className="bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400 text-xs px-3 py-2 rounded-lg flex items-center gap-2 border border-yellow-200 dark:border-yellow-800">
@@ -231,9 +256,10 @@ export default function AIAssistant({ context = 'customer' }) {
                     </div>
                 ))}
 
-                {showFAQs && (
+                {/* SUGGESTIONS / FAQs */}
+                {showFAQs && activeSuggestions.length > 0 && (
                   <div className="flex flex-wrap gap-2 mt-4 animate-fadeIn">
-                    {currentFaqs.map((faq, idx) => (
+                    {activeSuggestions.map((faq, idx) => (
                       <button
                         key={idx}
                         onClick={() => handleSend(faq.query)}
@@ -273,9 +299,9 @@ export default function AIAssistant({ context = 'customer' }) {
                 <div ref={messagesEndRef} />
             </div>
 
+            {/* Input Area */}
             <div className="p-3 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 flex gap-2 items-center">
                 
-                {/* MICROPHONE BUTTON - CONDITIONALLY RENDERED */}
                 {isSpeechSupported ? (
                     <button 
                         onClick={toggleListening}
@@ -289,10 +315,7 @@ export default function AIAssistant({ context = 'customer' }) {
                         {isListening ? <MicOff size={20} /> : <Mic size={20} />}
                     </button>
                 ) : (
-                    <div 
-                        className="p-3 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-300 dark:text-gray-600 cursor-not-allowed"
-                        title="Voice unavailable in this browser"
-                    >
+                    <div className="p-3 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-300 dark:text-gray-600 cursor-not-allowed">
                         <MicOff size={20} />
                     </div>
                 )}

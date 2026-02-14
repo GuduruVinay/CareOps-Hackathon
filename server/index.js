@@ -249,36 +249,75 @@ app.post('/api/bookings/:id/remind', async (req, res) => {
 app.get('/api/assistant', async (req, res) => {
   const { query, context, workspaceId = 1 } = req.query; 
   const lowerQuery = query.toLowerCase();
-  let responseText = "I'm not sure how to help with that.";
+  
+  let responseText = "I'm not sure how to help with that. Try one of the options below.";
+  let suggestions = [];
+
+  const adminSuggestions = ["Show today's bookings", "Check low stock items", "System status"];
+  const customerSuggestions = ["Book an appointment", "Check pricing", "Available slots?", "Reschedule booking", "Contact Support"];
 
   try {
+    // --- ADMIN CONTEXT LOGIC ---
     if (context === 'admin') {
+      suggestions = adminSuggestions; 
+
       if (lowerQuery.includes('today') || lowerQuery.includes('booking')) {
         const result = await pool.query(
           `SELECT c.name, b.start_time, b.service_type FROM bookings b JOIN contacts c ON b.contact_id = c.id WHERE b.workspace_id = $1 AND b.start_time::date = CURRENT_DATE ORDER BY b.start_time ASC`, [workspaceId]
         );
         if (result.rows.length > 0) {
           const list = result.rows.map(r => `• ${new Date(r.start_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}: ${r.name} (${r.service_type})`).join('\n');
-          responseText = `You have ${result.rows.length} booking(s) today:\n${list}`;
+          responseText = `📅 **Today's Schedule:**\n${list}`;
         } else {
-          responseText = "You have no bookings scheduled for today.";
+          responseText = "📅 You have no bookings scheduled for today.";
         }
-      } else if (lowerQuery.includes('stock') || lowerQuery.includes('low')) {
+      } 
+      else if (lowerQuery.includes('stock') || lowerQuery.includes('low') || lowerQuery.includes('inventory')) {
         const result = await pool.query(`SELECT item_name, quantity FROM inventory WHERE workspace_id = $1 AND quantity < low_stock_threshold`, [workspaceId]);
         if (result.rows.length > 0) {
-          const list = result.rows.map(i => `• ${i.item_name}: ${i.quantity}`).join('\n');
-          responseText = `⚠️ Low stock alert:\n${list}`;
+          const list = result.rows.map(i => `• ${i.item_name}: ${i.quantity} left`).join('\n');
+          responseText = `⚠️ **Low Stock Alert:**\n${list}`;
         } else {
           responseText = "✅ All inventory levels are healthy.";
         }
-      } else if (lowerQuery.includes('status')) {
-        responseText = "✅ System Online. Database connected.";
+      } 
+      else if (lowerQuery.includes('status')) {
+        responseText = "✅ **System Online**\nDatabase: Connected\nTimezone: UTC (Auto-converted to IST)";
+      }
+      else {
+        responseText = "Hello Admin! I can help you monitor your clinic operations. Select an option below:";
+      }
+    } 
+    
+    // --- CUSTOMER CONTEXT LOGIC (FIXED) ---
+    else if (context === 'customer') {
+      suggestions = customerSuggestions;
+
+      if (lowerQuery.includes('price') || lowerQuery.includes('cost') || lowerQuery.includes('much')) {
+        responseText = "💰 **Our Pricing:**\n• General Checkup: $50\n• Specialist Consultation: $120\n• Follow-up Visit: $30";
+      }
+      else if (lowerQuery.includes('book') || lowerQuery.includes('appointment')) {
+        responseText = "🗓️ **To book:**\nSimply select a service from the list on the left, choose a date, and pick a time slot.";
+      }
+      else if (lowerQuery.includes('slot') || lowerQuery.includes('avail')) {
+        responseText = "🕒 **Availability:**\nYou can see real-time availability on the calendar. If a slot is grayed out, it has already been booked.";
+      }
+      else if (lowerQuery.includes('reschedule') || lowerQuery.includes('cancel')) {
+        responseText = "🔄 **Rescheduling:**\nPlease check your confirmation email for a reschedule link, or contact our support team.";
+      }
+      else if (lowerQuery.includes('support') || lowerQuery.includes('help') || lowerQuery.includes('contact')) {
+        responseText = "📞 **Support:**\nYou can reach us at support@careops.com or call +1 (555) 012-3456.";
+      }
+      else {
+        responseText = "👋 I am the CareOps virtual assistant. I can help you with pricing, scheduling, and general questions.";
       }
     }
-    res.json({ reply: responseText, action: null });
+
+    res.json({ reply: responseText, suggestions: suggestions, action: null });
+
   } catch (err) {
     console.error(err);
-    res.status(500).json({ reply: "Server error." });
+    res.status(500).json({ reply: "Server error.", suggestions: [] });
   }
 });
 
