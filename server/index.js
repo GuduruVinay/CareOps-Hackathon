@@ -10,6 +10,8 @@ const twilio = require('twilio');
 // Initialize SendGrid
 if (process.env.SENDGRID_API_KEY) {
   sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+} else {
+  console.warn("⚠️  Missing SENDGRID_API_KEY. Emails will not be sent.");
 }
 
 // Initialize Twilio
@@ -32,7 +34,6 @@ const pool = new Pool({
 // --- HELPER: Mock Automation Logic ---
 async function runAutomation(triggerType, data) {
   console.log(`[AUTOMATION TRIGGERED] Type: ${triggerType}`);
-  // You can expand this to send real emails too
 }
 
 // --- ROUTES ---
@@ -159,7 +160,8 @@ app.put('/api/inventory/:id', async (req, res) => {
   }
 });
 
-// 8. POST Trigger Reminder (Email with Calendar Link)
+// 8. POST Trigger Reminder (Email with Intake Form + Calendar)
+// FIXED: Uses sgMail and includes Form Link
 app.post('/api/bookings/:id/remind', async (req, res) => {
   const { type } = req.body; 
   
@@ -180,52 +182,50 @@ app.post('/api/bookings/:id/remind', async (req, res) => {
     const dateObj = new Date(booking.start_time);
     const dateStr = dateObj.toLocaleString();
 
-    // --- GENERATE GOOGLE CALENDAR LINK ---
+    // Generate Links
+    // NOTE: In production, change localhost:3000 to your real frontend URL
+    const intakeFormUrl = `http://localhost:3000/form/${booking.id}`;
     const startTime = new Date(booking.start_time);
-    const endTime = new Date(startTime.getTime() + 60 * 60 * 1000); // Default: 1 Hour duration
-
-    // Helper to format date as YYYYMMDDTHHmmssZ
+    const endTime = new Date(startTime.getTime() + 60 * 60 * 1000); 
     const formatGCalTime = (date) => date.toISOString().replace(/-|:|\.\d\d\d/g, "");
+    const gCalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(booking.service_type)}&dates=${formatGCalTime(startTime)}/${formatGCalTime(endTime)}&details=${encodeURIComponent("Intake Form: " + intakeFormUrl)}`;
 
-    const gCalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(booking.service_type + " Appointment")}&dates=${formatGCalTime(startTime)}/${formatGCalTime(endTime)}&details=${encodeURIComponent("Appointment with CareOps for " + booking.service_type)}`;
-
-    // --- EMAIL HANDLER (SendGrid) ---
     if (type === 'email') {
       if (process.env.SENDGRID_API_KEY) {
         const msg = {
           to: booking.email,
-          from: process.env.SENDGRID_FROM_EMAIL,
-          subject: `Reminder: ${booking.service_type} on ${dateStr}`,
-          text: `Hi ${booking.name}, don't forget your ${booking.service_type} on ${dateStr}.`,
+          from: process.env.SENDGRID_FROM_EMAIL, // Must be verified sender
+          subject: `✅ Confirmed: ${booking.service_type} on ${dateStr}`,
           html: `
-            <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
-              <h2 style="color: #2563eb;">Appointment Reminder</h2>
+            <div style="font-family: Arial, sans-serif; padding: 20px; color: #333; border: 1px solid #eee; border-radius: 8px;">
+              <h2 style="color: #2563eb;">Booking Confirmed!</h2>
               <p>Hi <strong>${booking.name}</strong>,</p>
-              <p>This is a friendly reminder for your upcoming appointment:</p>
+              <p>Your appointment for <strong>${booking.service_type}</strong> is confirmed.</p>
               
-              <div style="background: #f3f4f6; padding: 15px; border-radius: 8px; margin: 20px 0;">
-                <p style="margin: 5px 0;"><strong>Service:</strong> ${booking.service_type}</p>
-                <p style="margin: 5px 0;"><strong>Time:</strong> ${dateStr}</p>
+              <div style="background: #f8fafc; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                <p style="margin: 0;"><strong>📅 Date:</strong> ${dateStr}</p>
               </div>
 
-              <a href="${gCalUrl}" style="background-color: #2563eb; color: white; padding: 12px 20px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">
-                📅 Add to Google Calendar
+              <p style="color: #dc2626; font-weight: bold;">Action Required:</p>
+              <p>Please complete your intake form before arriving:</p>
+              <a href="${intakeFormUrl}" style="display: inline-block; background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+                Complete Intake Form &rarr;
               </a>
+
+              <hr style="border: 0; border-top: 1px solid #eee; margin: 30px 0;" />
               
-              <p style="margin-top: 30px; font-size: 12px; color: #888;">
-                If you need to reschedule, please contact us.
+              <p>
+                <a href="${gCalUrl}" style="color: #2563eb; text-decoration: none;">Add to Google Calendar</a>
               </p>
             </div>
           `,
         };
         await sgMail.send(msg);
-        console.log(`[SendGrid] Email sent to ${booking.email} with Calendar Link`);
+        console.log(`[SendGrid] Reminder sent to ${booking.email}`);
       } else {
         console.warn("[SendGrid] Missing API Key - Mocking Email");
       }
     } 
-    
-    // Skip SMS logic since you don't have a number yet
     
     res.json({ success: true, message: `Email sent to ${booking.name}` });
   } catch (err) {
@@ -234,129 +234,116 @@ app.post('/api/bookings/:id/remind', async (req, res) => {
   }
 });
 
-// --- 9. AI ASSISTANT ENDPOINT (Real Data & No Navigation) ---
+// 9. AI ASSISTANT ENDPOINT
 app.get('/api/assistant', async (req, res) => {
   const { query, context, workspaceId = 1 } = req.query; 
   const lowerQuery = query.toLowerCase();
-  
   let responseText = "I'm not sure how to help with that.";
 
   try {
-    // --- CONTEXT: ADMIN (Real DB Queries) ---
     if (context === 'admin') {
-      
-      // 1. TODAY'S BOOKINGS (Detailed List)
       if (lowerQuery.includes('today') || lowerQuery.includes('booking')) {
         const result = await pool.query(
-          `SELECT c.name, b.start_time, b.service_type 
-           FROM bookings b 
-           JOIN contacts c ON b.contact_id = c.id 
-           WHERE b.workspace_id = $1 AND b.start_time::date = CURRENT_DATE
-           ORDER BY b.start_time ASC`, 
-          [workspaceId]
+          `SELECT c.name, b.start_time, b.service_type FROM bookings b JOIN contacts c ON b.contact_id = c.id WHERE b.workspace_id = $1 AND b.start_time::date = CURRENT_DATE ORDER BY b.start_time ASC`, [workspaceId]
         );
-        
         if (result.rows.length > 0) {
-          const list = result.rows.map(r => 
-            `• ${new Date(r.start_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}: ${r.name} (${r.service_type})`
-          ).join('\n');
+          const list = result.rows.map(r => `• ${new Date(r.start_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}: ${r.name} (${r.service_type})`).join('\n');
           responseText = `You have ${result.rows.length} booking(s) today:\n${list}`;
         } else {
           responseText = "You have no bookings scheduled for today.";
         }
-      } 
-      
-      // 2. LOW STOCK REPORT (Specific Items)
-      else if (lowerQuery.includes('stock') || lowerQuery.includes('low')) {
-        const result = await pool.query(
-          `SELECT item_name, quantity, low_stock_threshold 
-           FROM inventory 
-           WHERE workspace_id = $1 AND quantity < low_stock_threshold`, 
-          [workspaceId]
-        );
-
+      } else if (lowerQuery.includes('stock') || lowerQuery.includes('low')) {
+        const result = await pool.query(`SELECT item_name, quantity FROM inventory WHERE workspace_id = $1 AND quantity < low_stock_threshold`, [workspaceId]);
         if (result.rows.length > 0) {
-          const list = result.rows.map(i => `• ${i.item_name}: ${i.quantity} (Threshold: ${i.low_stock_threshold})`).join('\n');
-          responseText = `⚠️ Alert: ${result.rows.length} items are low on stock:\n${list}`;
+          const list = result.rows.map(i => `• ${i.item_name}: ${i.quantity}`).join('\n');
+          responseText = `⚠️ Low stock alert:\n${list}`;
         } else {
-          responseText = "✅ All inventory levels are healthy. Nothing is below the threshold.";
+          responseText = "✅ All inventory levels are healthy.";
         }
-      }
-
-      // 3. MESSAGES / INBOX SUMMARY
-      else if (lowerQuery.includes('message') || lowerQuery.includes('unread') || lowerQuery.includes('inbox')) {
-        // Getting distinct contacts who messaged recently
-        const result = await pool.query(
-          `SELECT COUNT(DISTINCT contact_id) as count FROM messages 
-           WHERE direction = 'INBOUND' AND created_at > NOW() - INTERVAL '24 HOURS'`
-        );
-        const count = result.rows[0].count;
-        responseText = count > 0 
-          ? `You have received messages from ${count} contact(s) in the last 24 hours.` 
-          : "Your inbox is quiet. No new messages in the last 24 hours.";
-      }
-
-      // 4. INVENTORY SUMMARY (Replaces 'Go to Inventory')
-      else if (lowerQuery.includes('inventory') || lowerQuery.includes('summary')) {
-        const total = await pool.query('SELECT COUNT(*) FROM inventory WHERE workspace_id = $1', [workspaceId]);
-        const value = await pool.query('SELECT SUM(quantity) as total_units FROM inventory WHERE workspace_id = $1', [workspaceId]);
-        responseText = `Inventory Snapshot:\n• Total SKUs: ${total.rows[0].count}\n• Total Units: ${value.rows[0].total_units || 0}`;
-      }
-
-      // 5. SYSTEM STATUS
-      else if (lowerQuery.includes('status') || lowerQuery.includes('system')) {
-        responseText = "✅ System is Online.\n• Database: Connected\n• Email Service: Active\n• API Latency: 24ms";
-      }
-
-      else if (lowerQuery.includes('hello') || lowerQuery.includes('hi')) {
-        responseText = "Hello Admin. I can generate reports on Bookings, Inventory, and Messages. What do you need?";
+      } else if (lowerQuery.includes('status')) {
+        responseText = "✅ System Online. Database connected.";
       }
     }
-
-    // --- CONTEXT: CUSTOMER (Booking Form) ---
-    else if (context === 'customer') {
-      if (lowerQuery.includes('price') || lowerQuery.includes('cost')) {
-        responseText = "Our consultation starts at $50, and follow-ups are $30.";
-      }
-      else if (lowerQuery.includes('available') || lowerQuery.includes('slot')) {
-        const slots = await pool.query(`SELECT start_time FROM bookings WHERE workspace_id = $1 AND start_time > NOW() LIMIT 3`, [workspaceId]);
-        if (slots.rows.length > 0) {
-            responseText = "I see availability starting tomorrow at 10:00 AM. You can use the form to select your preferred time.";
-        } else {
-            responseText = "We are very busy this week. Please check the calendar for next available slots.";
-        }
-      }
-      else if (lowerQuery.includes('book') || lowerQuery.includes('schedule')) {
-        responseText = "To book, simply select a Service, Date, and Time in the form provided on the screen.";
-      }
-      else if (lowerQuery.includes('hello') || lowerQuery.includes('hi')) {
-        responseText = "Hi! I can help you with pricing, availability, or booking questions.";
-      }
-    }
-
-    // Return plain response (Action is removed/null)
     res.json({ reply: responseText, action: null });
-
   } catch (err) {
     console.error(err);
-    res.status(500).json({ reply: "I encountered a server error while fetching that data." });
+    res.status(500).json({ reply: "Server error." });
   }
 });
 
-// --- 10. AUTHENTICATION ENDPOINT ---
+// 10. LOGIN ENDPOINT
 app.post('/api/login', (req, res) => {
   const { email, password } = req.body;
-
-  // Simple Admin Check (In production, use hashed passwords in DB)
   const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@careops.com';
   const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
 
   if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
-    // Return a basic token (In production, use JWT)
     res.json({ success: true, token: 'mock-admin-token-123', user: { name: 'Admin User', email: ADMIN_EMAIL } });
   } else {
     res.status(401).json({ success: false, message: 'Invalid credentials' });
   }
+});
+
+// 11. CANCEL BOOKING ENDPOINT
+// FIXED: Uses sgMail instead of transporter
+app.put('/api/bookings/:id/cancel', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    // 1. Update Status in DB
+    const result = await pool.query(
+      `UPDATE bookings SET status = 'CANCELLED' WHERE id = $1 RETURNING *`,
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Booking not found" });
+    }
+
+    // 2. Fetch Contact Details
+    const booking = result.rows[0];
+    const contactRes = await pool.query(`SELECT * FROM contacts WHERE id = $1`, [booking.contact_id]);
+    const contact = contactRes.rows[0];
+    const bookingDate = new Date(booking.start_time).toLocaleString();
+
+    // 3. Send Cancellation Email (Using SendGrid)
+    if (process.env.SENDGRID_API_KEY) {
+        const msg = {
+          to: contact.email,
+          from: process.env.SENDGRID_FROM_EMAIL, // Must be verified sender
+          subject: `❌ Cancelled: ${booking.service_type} on ${bookingDate}`,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px;">
+              <h2 style="color: #dc2626;">Appointment Cancelled</h2>
+              <p>Hi <strong>${contact.name}</strong>,</p>
+              <p>Your appointment for <strong>${booking.service_type}</strong> scheduled for <strong>${bookingDate}</strong> has been cancelled.</p>
+              <div style="background-color: #fef2f2; padding: 15px; border-radius: 8px; margin: 20px 0; border: 1px solid #fecaca;">
+                <p style="margin: 0; color: #991b1b;">If this was a mistake, please contact us or reply to this email.</p>
+              </div>
+              <p>Regards,<br/>CareOps Team</p>
+            </div>
+          `
+        };
+        await sgMail.send(msg);
+        console.log(`Cancellation email sent to ${contact.email}`);
+    } else {
+        console.log("SendGrid Key missing. Email skipped.");
+    }
+
+    res.json({ success: true, booking: result.rows[0] });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to cancel booking" });
+  }
+});
+
+// 12. GET/PUT Settings
+app.get('/api/workspace/:id', (req, res) => {
+    res.json({ name: "Demo Clinic", business_hours_start: "09:00", business_hours_end: "17:00" });
+});
+app.put('/api/workspace/:id', (req, res) => {
+    res.json({ success: true });
 });
 
 app.listen(port, () => {
