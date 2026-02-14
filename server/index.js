@@ -192,7 +192,7 @@ app.put('/api/inventory/:id', async (req, res) => {
   }
 });
 
-// 8. POST Trigger Reminder (UPDATED EMAIL TEMPLATE)
+// 8. POST Trigger Reminder (FIXED TIMEZONE)
 app.post('/api/bookings/:id/remind', async (req, res) => {
   const { type } = req.body; 
   try {
@@ -207,13 +207,20 @@ app.post('/api/bookings/:id/remind', async (req, res) => {
     if (bookingRes.rows.length === 0) return res.status(404).json({ error: "Booking not found" });
 
     const booking = bookingRes.rows[0];
-    const dbDate = new Date(booking.start_time);
-    const istOffset = 19800000; 
-    const istDate = new Date(dbDate.getTime() + istOffset);
     
-    const dateStr = istDate.toLocaleString('en-US', { 
-        timeZone: 'UTC', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', 
-        hour: 'numeric', minute: '2-digit', hour12: true 
+    // Create Date object from database timestamp
+    const dbDate = new Date(booking.start_time);
+    
+    // FORMAT: Force Indian Standard Time (Asia/Kolkata)
+    const dateStr = dbDate.toLocaleString('en-IN', { 
+        timeZone: 'Asia/Kolkata', 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric', 
+        hour: 'numeric', 
+        minute: '2-digit', 
+        hour12: true 
     });
 
     const intakeFormUrl = `${CLIENT_URL}/form/${booking.id}`;
@@ -354,21 +361,34 @@ app.post('/api/login', (req, res) => {
   }
 });
 
-// 11. CANCEL BOOKING
+// 11. CANCEL BOOKING (FIXED TIMEZONE)
 app.put('/api/bookings/:id/cancel', async (req, res) => {
   const { id } = req.params;
   try {
     const result = await pool.query(`UPDATE bookings SET status = 'CANCELLED' WHERE id = $1 RETURNING *`, [id]);
-    if (result.rows.length === 0) return res.status(404).json({ error: "Booking not found" });
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Booking not found" });
+    }
 
     const booking = result.rows[0];
     const contactRes = await pool.query(`SELECT * FROM contacts WHERE id = $1`, [booking.contact_id]);
     const contact = contactRes.rows[0];
     
+    // Create Date object from database timestamp
     const dbDate = new Date(booking.start_time);
-    const istOffset = 19800000;
-    const istDate = new Date(dbDate.getTime() + istOffset);
-    const bookingDate = istDate.toLocaleString('en-US', { timeZone: 'UTC', weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+    
+    // FORMAT: Force Indian Standard Time (Asia/Kolkata) for the cancellation notice
+    const bookingDate = dbDate.toLocaleString('en-IN', { 
+      timeZone: 'Asia/Kolkata', 
+      weekday: 'short', 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric', 
+      hour: 'numeric', 
+      minute: '2-digit', 
+      hour12: true 
+    });
 
     if (process.env.SENDGRID_API_KEY) {
         const msg = {
@@ -376,16 +396,27 @@ app.put('/api/bookings/:id/cancel', async (req, res) => {
           from: process.env.SENDGRID_FROM_EMAIL,
           subject: `❌ Cancelled: ${booking.service_type}`,
           html: `
-            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e5e7eb; border-radius: 12px;">
-              <h2 style="color: #dc2626; text-align: center;">Appointment Cancelled</h2>
-              <p style="text-align: center; color: #4b5563;">Hi <strong>${contact.name}</strong>,</p>
-              <p style="text-align: center; color: #4b5563;">
-                Your appointment for <strong>${booking.service_type}</strong> on <strong>${bookingDate}</strong> has been cancelled.
-              </p>
-              <div style="background-color: #fef2f2; padding: 16px; border-radius: 8px; margin: 24px 0; border: 1px solid #fecaca; text-align: center;">
-                <p style="margin: 0; color: #991b1b; font-weight: bold;">If this was a mistake, please contact us.</p>
+            <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e5e7eb; border-radius: 12px; background-color: #ffffff;">
+              <div style="text-align: center; margin-bottom: 24px;">
+                <div style="display: inline-block; background-color: #fee2e2; padding: 16px; rounded-full; margin-bottom: 16px;">
+                   <span style="font-size: 32px;">⚠️</span>
+                </div>
+                <h2 style="color: #dc2626; margin: 0; font-size: 24px;">Appointment Cancelled</h2>
               </div>
-              <p style="text-align: center; color: #9ca3af; font-size: 14px;">Regards,<br/>CareOps Team</p>
+              
+              <p style="color: #374151; font-size: 16px; line-height: 1.5;">Hi <strong>${contact.name}</strong>,</p>
+              <p style="color: #374151; font-size: 16px; line-height: 1.5;">
+                Your appointment for <strong>${booking.service_type}</strong> previously scheduled for <strong>${bookingDate}</strong> has been successfully cancelled.
+              </p>
+              
+              <div style="background-color: #f9fafb; padding: 20px; border-radius: 8px; margin: 24px 0; border: 1px solid #e5e7eb; text-align: center;">
+                <p style="margin: 0; color: #6b7280; font-size: 14px; font-weight: bold;">If this was a mistake or you'd like to rebook, please visit our portal or reply to this email.</p>
+              </div>
+              
+              <p style="text-align: center; color: #9ca3af; font-size: 14px; margin-top: 32px;">
+                Regards,<br/>
+                <strong>CareOps Team</strong>
+              </p>
             </div>
           `
         };
@@ -393,6 +424,7 @@ app.put('/api/bookings/:id/cancel', async (req, res) => {
     }
     res.json({ success: true, booking: result.rows[0] });
   } catch (err) {
+    console.error("Cancellation Error:", err);
     res.status(500).json({ error: "Failed to cancel booking" });
   }
 });
