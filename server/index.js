@@ -157,7 +157,7 @@ app.put('/api/inventory/:id', async (req, res) => {
   }
 });
 
-// 8. POST Trigger Reminder
+// 8. POST Trigger Reminder (UPDATED EMAIL TEMPLATE)
 app.post('/api/bookings/:id/remind', async (req, res) => {
   const { type } = req.body; 
   try {
@@ -182,6 +182,8 @@ app.post('/api/bookings/:id/remind', async (req, res) => {
     });
 
     const intakeFormUrl = `http://localhost:3000/form/${booking.id}`;
+    
+    // Calendar Logic
     const startTime = new Date(booking.start_time);
     const endTime = new Date(startTime.getTime() + 60 * 60 * 1000); 
     const formatGCalTime = (date) => date.toISOString().replace(/-|:|\.\d\d\d/g, "");
@@ -193,18 +195,41 @@ app.post('/api/bookings/:id/remind', async (req, res) => {
           from: process.env.SENDGRID_FROM_EMAIL,
           subject: `✅ Confirmed: ${booking.service_type} on ${dateStr}`,
           html: `
-            <div style="font-family: sans-serif; max-width: 600px; margin: auto; border: 1px solid #eee; border-radius: 8px;">
-              <div style="background-color: #2563eb; padding: 20px; text-align: center; color: white;">
-                <h2 style="margin:0;">Booking Confirmed!</h2>
+            <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
+              
+              <div style="background-color: #2563eb; padding: 24px; text-align: center;">
+                <h1 style="color: #ffffff; margin: 0; font-size: 24px;">Booking Confirmed!</h1>
               </div>
-              <div style="padding: 20px;">
-                <p>Hi <strong>${booking.name}</strong>,</p>
-                <p>Your appointment is confirmed for <strong>${dateStr}</strong>.</p>
-                <div style="text-align:center; margin-top:20px;">
-                  <a href="${intakeFormUrl}" style="background:#2563eb; color:white; padding:10px 20px; text-decoration:none; border-radius:5px;">Complete Intake Form</a>
+
+              <div style="padding: 32px 24px;">
+                <p style="font-size: 16px; color: #374151; margin-top: 0;">Hi <strong>${booking.name}</strong>,</p>
+                <p style="font-size: 16px; color: #374151;">Your appointment is officially scheduled.</p>
+                
+                <div style="background-color: #f3f4f6; padding: 20px; border-radius: 12px; margin: 24px 0; text-align: center; border: 1px solid #e5e7eb;">
+                  <p style="margin: 0; font-size: 13px; color: #6b7280; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">Date & Time</p>
+                  <p style="margin: 8px 0 4px 0; font-size: 20px; color: #111827; font-weight: bold;">${dateStr}</p>
+                  <p style="margin: 0; color: #2563eb; font-weight: 500;">${booking.service_type}</p>
+                </div>
+
+                <div style="margin-bottom: 20px; text-align: center;">
+                  <p style="color: #dc2626; font-weight: bold; font-size: 14px; margin-bottom: 12px;">Action Required:</p>
+                  <a href="${intakeFormUrl}" style="display: inline-block; background-color: #2563eb; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">
+                    Complete Intake Form
+                  </a>
+                </div>
+
+                <div style="text-align: center;">
+                  <a href="${gCalUrl}" style="display: inline-block; background-color: #ffffff; color: #374151; padding: 12px 24px; text-decoration: none; border: 2px solid #e5e7eb; border-radius: 8px; font-weight: 600; font-size: 14px;">
+                    📅 Add to Google Calendar
+                  </a>
                 </div>
               </div>
-            </div>`
+              
+              <div style="background-color: #f9fafb; padding: 16px; text-align: center; font-size: 12px; color: #9ca3af; border-top: 1px solid #e5e7eb;">
+                <p style="margin: 0;">Need to reschedule? Reply to this email.</p>
+              </div>
+            </div>
+          `,
         };
         await sgMail.send(msg);
     } 
@@ -315,7 +340,19 @@ app.put('/api/bookings/:id/cancel', async (req, res) => {
           to: contact.email,
           from: process.env.SENDGRID_FROM_EMAIL,
           subject: `❌ Cancelled: ${booking.service_type}`,
-          html: `<div style="font-family:sans-serif; padding:20px;"><h2>Appointment Cancelled</h2><p>Your appointment on <strong>${bookingDate}</strong> has been cancelled.</p></div>`
+          html: `
+            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e5e7eb; border-radius: 12px;">
+              <h2 style="color: #dc2626; text-align: center;">Appointment Cancelled</h2>
+              <p style="text-align: center; color: #4b5563;">Hi <strong>${contact.name}</strong>,</p>
+              <p style="text-align: center; color: #4b5563;">
+                Your appointment for <strong>${booking.service_type}</strong> on <strong>${bookingDate}</strong> has been cancelled.
+              </p>
+              <div style="background-color: #fef2f2; padding: 16px; border-radius: 8px; margin: 24px 0; border: 1px solid #fecaca; text-align: center;">
+                <p style="margin: 0; color: #991b1b; font-weight: bold;">If this was a mistake, please contact us.</p>
+              </div>
+              <p style="text-align: center; color: #9ca3af; font-size: 14px;">Regards,<br/>CareOps Team</p>
+            </div>
+          `
         };
         await sgMail.send(msg);
     }
@@ -330,7 +367,7 @@ app.get('/api/workspace/:id', (req, res) => res.json({ name: "CareOps", business
 app.put('/api/workspace/:id', (req, res) => res.json({ success: true }));
 
 // 13. INTAKE FORM
-app.get('/api/bookings/:id', async (req, res) => {
+app.get('/api/booking/:id', async (req, res) => {
   try {
     const result = await pool.query(`SELECT b.id, b.service_type, b.start_time, c.name, c.email FROM bookings b JOIN contacts c ON b.contact_id = c.id WHERE b.id = $1`, [req.params.id]);
     if (result.rows.length === 0) return res.status(404).json({ error: "Not found" });
@@ -362,7 +399,7 @@ app.get('/api/inventory/item/:id', async (req, res) => {
   } catch (err) { res.status(500).send("Server Error"); }
 });
 
-// 15. UPDATE BOOKING STATUS (FIX FOR 404)
+// 15. UPDATE BOOKING STATUS
 app.put('/api/bookings/:id/status', async (req, res) => {
   const { id } = req.params;
   const { status } = req.body; 
