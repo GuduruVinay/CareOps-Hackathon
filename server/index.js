@@ -33,7 +33,7 @@ const pool = new Pool({
 
 // --- HELPER: Mock Automation Logic ---
 async function runAutomation(triggerType, data) {
-  console.log(`[AUTOMATION TRIGGERED] Type: ${triggerType}`);
+  console.log(`[AUTOMATION TRIGGERED] Type: ${triggerType}`, data);
 }
 
 // --- ROUTES ---
@@ -58,12 +58,12 @@ app.get('/api/dashboard/:workspaceId', async (req, res) => {
   }
 });
 
-// 2. GET All Bookings
+// 2. GET All Bookings (Now includes intake_status)
 app.get('/api/bookings/:workspaceId', async (req, res) => {
   const { workspaceId } = req.params;
   try {
     const allBookings = await pool.query(
-      `SELECT b.id, b.service_type, b.start_time, b.status, c.name, c.email, c.phone 
+      `SELECT b.id, b.service_type, b.start_time, b.status, b.intake_status, c.name, c.email, c.phone 
        FROM bookings b 
        JOIN contacts c ON b.contact_id = c.id 
        WHERE b.workspace_id = $1 
@@ -160,8 +160,7 @@ app.put('/api/inventory/:id', async (req, res) => {
   }
 });
 
-// 8. POST Trigger Reminder (Email with Intake Form + Calendar)
-// FIXED: Uses sgMail and includes Form Link
+// 8. POST Trigger Reminder (FIXED TIMEZONE + INTAKE LINK)
 app.post('/api/bookings/:id/remind', async (req, res) => {
   const { type } = req.body; 
   
@@ -179,52 +178,64 @@ app.post('/api/bookings/:id/remind', async (req, res) => {
     }
 
     const booking = bookingRes.rows[0];
-    const dateObj = new Date(booking.start_time);
-    const dateStr = dateObj.toLocaleString();
+    const dbDate = new Date(booking.start_time);
 
-    // Generate Links
-    // NOTE: In production, change localhost:3000 to your real frontend URL
+    // --- TIMEZONE FIX ---
+    // Manually add 5.5 hours (19,800,000 ms) to convert UTC to IST
+    // Then print as UTC to maintain the shifted value (e.g., 17:00 stays 17:00)
+    const istOffset = 19800000; 
+    const istDate = new Date(dbDate.getTime() + istOffset);
+    
+    const dateStr = istDate.toLocaleString('en-US', { 
+        timeZone: 'UTC', 
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', 
+        hour: 'numeric', minute: '2-digit', hour12: true 
+    });
+
     const intakeFormUrl = `http://localhost:3000/form/${booking.id}`;
+    
     const startTime = new Date(booking.start_time);
     const endTime = new Date(startTime.getTime() + 60 * 60 * 1000); 
     const formatGCalTime = (date) => date.toISOString().replace(/-|:|\.\d\d\d/g, "");
     const gCalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(booking.service_type)}&dates=${formatGCalTime(startTime)}/${formatGCalTime(endTime)}&details=${encodeURIComponent("Intake Form: " + intakeFormUrl)}`;
 
-    if (type === 'email') {
-      if (process.env.SENDGRID_API_KEY) {
+    if (type === 'email' && process.env.SENDGRID_API_KEY) {
         const msg = {
           to: booking.email,
-          from: process.env.SENDGRID_FROM_EMAIL, // Must be verified sender
+          from: process.env.SENDGRID_FROM_EMAIL,
           subject: `✅ Confirmed: ${booking.service_type} on ${dateStr}`,
           html: `
-            <div style="font-family: Arial, sans-serif; padding: 20px; color: #333; border: 1px solid #eee; border-radius: 8px;">
-              <h2 style="color: #2563eb;">Booking Confirmed!</h2>
-              <p>Hi <strong>${booking.name}</strong>,</p>
-              <p>Your appointment for <strong>${booking.service_type}</strong> is confirmed.</p>
-              
-              <div style="background: #f8fafc; padding: 15px; border-radius: 8px; margin: 20px 0;">
-                <p style="margin: 0;"><strong>📅 Date:</strong> ${dateStr}</p>
+            <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; background-color: #ffffff;">
+              <div style="background-color: #2563eb; padding: 24px; text-align: center;">
+                <h1 style="color: #ffffff; margin: 0; font-size: 24px;">Booking Confirmed!</h1>
               </div>
+              <div style="padding: 32px 24px;">
+                <p style="font-size: 16px; color: #374151; margin-top: 0;">Hi <strong>${booking.name}</strong>,</p>
+                
+                <div style="background-color: #f3f4f6; padding: 20px; border-radius: 12px; margin: 24px 0; text-align: center; border: 1px solid #e5e7eb;">
+                  <p style="margin: 0; font-size: 13px; color: #6b7280; text-transform: uppercase; font-weight: bold;">Date & Time</p>
+                  <p style="margin: 8px 0 4px 0; font-size: 20px; color: #111827; font-weight: bold;">${dateStr}</p>
+                  <p style="margin: 0; color: #2563eb; font-weight: 500;">${booking.service_type}</p>
+                </div>
 
-              <p style="color: #dc2626; font-weight: bold;">Action Required:</p>
-              <p>Please complete your intake form before arriving:</p>
-              <a href="${intakeFormUrl}" style="display: inline-block; background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
-                Complete Intake Form &rarr;
-              </a>
+                <div style="margin-bottom: 20px; text-align: center;">
+                  <p style="color: #dc2626; font-weight: bold; font-size: 14px; margin-bottom: 12px;">Action Required:</p>
+                  <a href="${intakeFormUrl}" style="display: inline-block; background-color: #2563eb; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">
+                    Complete Intake Form
+                  </a>
+                </div>
 
-              <hr style="border: 0; border-top: 1px solid #eee; margin: 30px 0;" />
-              
-              <p>
-                <a href="${gCalUrl}" style="color: #2563eb; text-decoration: none;">Add to Google Calendar</a>
-              </p>
+                <div style="text-align: center;">
+                  <a href="${gCalUrl}" style="display: inline-block; background-color: #ffffff; color: #374151; padding: 12px 24px; text-decoration: none; border: 2px solid #e5e7eb; border-radius: 8px; font-weight: 600; font-size: 14px;">
+                    📅 Add to Google Calendar
+                  </a>
+                </div>
+              </div>
             </div>
           `,
         };
         await sgMail.send(msg);
         console.log(`[SendGrid] Reminder sent to ${booking.email}`);
-      } else {
-        console.warn("[SendGrid] Missing API Key - Mocking Email");
-      }
     } 
     
     res.json({ success: true, message: `Email sent to ${booking.name}` });
@@ -284,13 +295,11 @@ app.post('/api/login', (req, res) => {
   }
 });
 
-// 11. CANCEL BOOKING ENDPOINT
-// FIXED: Uses sgMail instead of transporter
+// 11. CANCEL BOOKING ENDPOINT (FIXED TIMEZONE)
 app.put('/api/bookings/:id/cancel', async (req, res) => {
   const { id } = req.params;
 
   try {
-    // 1. Update Status in DB
     const result = await pool.query(
       `UPDATE bookings SET status = 'CANCELLED' WHERE id = $1 RETURNING *`,
       [id]
@@ -300,34 +309,41 @@ app.put('/api/bookings/:id/cancel', async (req, res) => {
       return res.status(404).json({ error: "Booking not found" });
     }
 
-    // 2. Fetch Contact Details
     const booking = result.rows[0];
     const contactRes = await pool.query(`SELECT * FROM contacts WHERE id = $1`, [booking.contact_id]);
     const contact = contactRes.rows[0];
-    const bookingDate = new Date(booking.start_time).toLocaleString();
+    
+    // --- TIMEZONE FIX ---
+    const dbDate = new Date(booking.start_time);
+    const istOffset = 19800000; // 5.5 hours in ms
+    const istDate = new Date(dbDate.getTime() + istOffset);
+    
+    const bookingDate = istDate.toLocaleString('en-US', { 
+        timeZone: 'UTC', 
+        weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true
+    });
 
-    // 3. Send Cancellation Email (Using SendGrid)
     if (process.env.SENDGRID_API_KEY) {
         const msg = {
           to: contact.email,
-          from: process.env.SENDGRID_FROM_EMAIL, // Must be verified sender
+          from: process.env.SENDGRID_FROM_EMAIL,
           subject: `❌ Cancelled: ${booking.service_type} on ${bookingDate}`,
           html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px;">
-              <h2 style="color: #dc2626;">Appointment Cancelled</h2>
-              <p>Hi <strong>${contact.name}</strong>,</p>
-              <p>Your appointment for <strong>${booking.service_type}</strong> scheduled for <strong>${bookingDate}</strong> has been cancelled.</p>
-              <div style="background-color: #fef2f2; padding: 15px; border-radius: 8px; margin: 20px 0; border: 1px solid #fecaca;">
-                <p style="margin: 0; color: #991b1b;">If this was a mistake, please contact us or reply to this email.</p>
+            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e5e7eb; border-radius: 12px; background-color: #fff;">
+              <h2 style="color: #dc2626; text-align: center; margin-top: 0;">Appointment Cancelled</h2>
+              <p style="text-align: center; color: #4b5563;">Hi <strong>${contact.name}</strong>,</p>
+              <p style="text-align: center; color: #4b5563;">
+                Your appointment for <strong>${booking.service_type}</strong> on <strong>${bookingDate}</strong> has been cancelled.
+              </p>
+              <div style="background-color: #fef2f2; padding: 16px; border-radius: 8px; margin: 24px 0; border: 1px solid #fecaca; text-align: center;">
+                <p style="margin: 0; color: #991b1b; font-weight: bold;">If this was a mistake, please contact us.</p>
               </div>
-              <p>Regards,<br/>CareOps Team</p>
+              <p style="text-align: center; color: #9ca3af; font-size: 14px;">Regards,<br/>CareOps Team</p>
             </div>
           `
         };
         await sgMail.send(msg);
         console.log(`Cancellation email sent to ${contact.email}`);
-    } else {
-        console.log("SendGrid Key missing. Email skipped.");
     }
 
     res.json({ success: true, booking: result.rows[0] });
@@ -340,10 +356,84 @@ app.put('/api/bookings/:id/cancel', async (req, res) => {
 
 // 12. GET/PUT Settings
 app.get('/api/workspace/:id', (req, res) => {
-    res.json({ name: "Demo Clinic", business_hours_start: "09:00", business_hours_end: "17:00" });
+    res.json({ name: "CareOps", business_hours_start: "09:00", business_hours_end: "17:00" });
 });
 app.put('/api/workspace/:id', (req, res) => {
     res.json({ success: true });
+});
+
+// 13. INTAKE FORM ENDPOINTS
+app.get('/api/bookings/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(
+      `SELECT b.id, b.service_type, b.start_time, c.name, c.email 
+       FROM bookings b 
+       JOIN contacts c ON b.contact_id = c.id 
+       WHERE b.id = $1`,
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Booking not found" });
+    }
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Server Error");
+  }
+});
+
+// UPDATE INTAKE STATUS
+app.post('/api/bookings/:id/intake', async (req, res) => {
+  const { id } = req.params;
+  const formData = req.body;
+
+  try {
+    // Save to DB (Update status to COMPLETED)
+    await pool.query(`UPDATE bookings SET intake_status = 'COMPLETED' WHERE id = $1`, [id]);
+    
+    console.log(`📝 Intake Received for Booking ${id}:`, formData);
+    runAutomation('INTAKE_SUBMITTED', { bookingId: id, data: formData });
+
+    res.json({ success: true, message: "Intake saved successfully" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Failed to save intake");
+  }
+});
+
+// 14. GET SINGLE INVENTORY ITEM (With Stats)
+app.get('/api/inventory/item/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await pool.query('SELECT * FROM inventory WHERE id = $1', [id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Item not found" });
+    }
+
+    const item = result.rows[0];
+
+    // Mock usage stats
+    const mockMonthlyUsage = 50 + ((item.id * 17) % 400); 
+    
+    let status = 'In Stock';
+    if (item.quantity === 0) status = 'Out of Stock';
+    else if (item.quantity < item.low_stock_threshold) status = 'Low Stock';
+
+    res.json({
+      ...item,
+      status,
+      monthly_usage: mockMonthlyUsage,
+      last_restock: new Date(Date.now() - (item.id * 86400000)).toLocaleDateString()
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Server Error");
+  }
 });
 
 app.listen(port, () => {

@@ -130,22 +130,31 @@ export default function PublicBookingForm() {
     return days;
   };
 
+  // --- SUBMIT HANDLER (Updated to Send Email) ---
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!selectedDate || !selectedTime) return;
     setStatus('submitting');
-
-    const finalDate = new Date(selectedDate);
-    const [hours, minutes] = selectedTime.split(':');
-    finalDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+    
+    // 1. Construct "Wall Clock" Date String (YYYY-MM-DDTHH:mm:ss)
+    // This ignores timezones and sends exactly what you selected (e.g. 09:00)
+    const year = selectedDate.getFullYear();
+    const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+    const day = String(selectedDate.getDate()).padStart(2, '0');
+    const localDateString = `${year}-${month}-${day}T${selectedTime}:00`;
 
     try {
-      await axios.post('http://localhost:5000/api/bookings', {
+      // 2. Create Booking
+      const res = await axios.post('http://localhost:5000/api/bookings', {
         workspace_id: 1,
         ...formData,
-        start_time: finalDate.toISOString(),
+        start_time: localDateString, // Send "2026-02-15T09:00:00" directly
       });
-      setStep(4); // Success Step
+
+      // 3. Trigger Email
+      await axios.post(`http://localhost:5000/api/bookings/${res.data.id}/remind`, { type: 'email' });
+
+      setStep(4);
       setStatus('success');
     } catch (err) {
       console.error(err);

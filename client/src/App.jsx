@@ -7,6 +7,7 @@ import InventoryDetailPage from './pages/InventoryDetailPage';
 import InboxPage from './pages/InboxPage';
 import LoginPage from './pages/LoginPage';
 import PublicBookingPage from './pages/PublicBookingPage';
+import IntakeFormPage from './pages/IntakeFormPage';
 
 function App() {
   return (
@@ -15,6 +16,7 @@ function App() {
         {/* PUBLIC ROUTE */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/book" element={<PublicBookingPage />} />
+        <Route path="/form/:id" element={<IntakeFormPage />} />
 
         {/* PROTECTED ADMIN ROUTES */}
         <Route path="/" element={

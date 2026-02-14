@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
+import axios from 'axios'; // IMPORT AXIOS
 import { Link } from 'react-router-dom';
 import { CalendarRange, MessageSquare, AlertTriangle, ExternalLink, ArrowRight, User, Activity } from 'lucide-react';
-import ThemeToggle from './ThemeToggle';
-import AIAssistant from './AIAssistant';
-import LoadingThrobber from './LoadingThrobber';
+import ThemeToggle from '../components/ThemeToggle';
+import AIAssistant from '../components/AIAssistant';
+import LoadingThrobber from '../components/LoadingThrobber';
 
 export default function Dashboard() {
   const [stats, setStats] = useState({
@@ -12,20 +13,22 @@ export default function Dashboard() {
     lowStock: 0
   });
   const [loading, setLoading] = useState(true);
+  const WORKSPACE_ID = 1; // Default Workspace
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Mocking data fetch for demonstration - replace with your actual API calls
-        // const bookingsRes = await axios.get(`http://localhost:5000/api/bookings/${WORKSPACE_ID}`);
-        // ... (Keep your existing data fetching logic here)
+        // --- REAL API CALL ---
+        const res = await axios.get(`http://localhost:5000/api/dashboard/${WORKSPACE_ID}`);
         
-        // Simulating data for UI preview
-        setTimeout(() => {
-             setStats({ bookings: 12, unread: 5, lowStock: 3 });
-             setLoading(false);
-        }, 800);
-
+        // Map backend response keys to frontend state
+        setStats({
+          bookings: res.data.upcoming_bookings,
+          unread: res.data.unread_messages,
+          lowStock: res.data.low_stock_items
+        });
+        
+        setLoading(false);
       } catch (error) {
         console.error("Error loading dashboard data", error);
         setLoading(false);
@@ -77,7 +80,7 @@ export default function Dashboard() {
         <div className="w-full md:w-auto">
           <div className="flex items-center gap-3">
             <div className="inline-flex p-3 bg-blue-600 rounded-xl mb-4">
-              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-activity text-white" aria-hidden="true"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"></path></svg>
+              <Activity className="text-white" size={32} />
             </div>
             <h1 className="mb-4 text-2xl md:text-3xl font-bold text-gray-900 dark:text-white tracking-tight">CareOps Dashboard</h1>
           </div>
@@ -89,10 +92,11 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Action Buttons - Stack on mobile, Row on Desktop */}
+        {/* Action Buttons */}
         <div className="flex flex-row items-center gap-3 w-full md:w-auto">
            <Link 
              to="/book" 
+             target="_blank"
              className="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-3 md:py-2.5 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 active:scale-95 transition-all shadow-lg shadow-blue-200 dark:shadow-none whitespace-nowrap"
            >
              Open Booking Page <ExternalLink size={16} />
@@ -151,7 +155,6 @@ export default function Dashboard() {
             </p>
           </div>
           <button 
-            // UPDATED BUTTON CLASSES
             className="group px-6 py-3 bg-white text-blue-600 rounded-xl font-bold transition-all duration-300 flex items-center gap-2 shadow-md hover:bg-blue-50 hover:shadow-xl hover:-translate-y-1 hover:scale-105 active:scale-95 active:translate-y-0"
             onClick={() => window.dispatchEvent(new Event('open-ai-chat'))}
           >
