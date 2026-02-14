@@ -8,6 +8,7 @@ import InboxPage from './pages/InboxPage';
 import LoginPage from './pages/LoginPage';
 import PublicBookingPage from './pages/PublicBookingPage';
 import IntakeFormPage from './pages/IntakeFormPage';
+import StaffPage from './pages/StaffPage';
 
 function App() {
   return (
@@ -46,6 +47,12 @@ function App() {
         <Route path="/inbox" element={
           <ProtectedRoute>
             <InboxPage />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/staff" element={
+          <ProtectedRoute>
+            <StaffPage />
           </ProtectedRoute>
         } />
       </Routes>

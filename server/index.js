@@ -35,19 +35,52 @@ async function runAutomation(triggerType, data) {
 
 // --- ROUTES ---
 
-// 1. GET Dashboard Stats
+// 1. GET Dashboard Stats (UPDATED)
 app.get('/api/dashboard/:workspaceId', async (req, res) => {
   const { workspaceId } = req.params;
   try {
-    const bookingsQuery = pool.query('SELECT COUNT(*) FROM bookings WHERE workspace_id = $1 AND start_time > NOW()', [workspaceId]);
-    const lowStockQuery = pool.query('SELECT COUNT(*) FROM inventory WHERE workspace_id = $1 AND quantity < low_stock_threshold', [workspaceId]);
-    const messagesQuery = pool.query('SELECT COUNT(*) FROM messages WHERE direction = $1', ['INBOUND']);
-    const [bookings, lowStock, messages] = await Promise.all([bookingsQuery, lowStockQuery, messagesQuery]);
+    // 1. Confirmed Upcoming
+    const bookingsQuery = pool.query(
+      "SELECT COUNT(*) FROM bookings WHERE workspace_id = $1 AND start_time > NOW() AND status = 'CONFIRMED'", 
+      [workspaceId]
+    );
+    // 2. Pending/Unconfirmed
+    const pendingBookingsQuery = pool.query(
+      "SELECT COUNT(*) FROM bookings WHERE workspace_id = $1 AND status = 'PENDING'", 
+      [workspaceId]
+    );
+    // 3. Low Stock
+    const lowStockQuery = pool.query(
+      'SELECT COUNT(*) FROM inventory WHERE workspace_id = $1 AND quantity < low_stock_threshold', 
+      [workspaceId]
+    );
+    // 4. Inbound Messages
+    const messagesQuery = pool.query(
+      "SELECT COUNT(*) FROM messages WHERE direction = $1", 
+      ['INBOUND']
+    );
+    // 5. Incomplete Forms (Upcoming only)
+    const formsQuery = pool.query(
+      "SELECT COUNT(*) FROM bookings WHERE workspace_id = $1 AND intake_status != 'COMPLETED' AND start_time > NOW()", 
+      [workspaceId]
+    );
+    // 6. Staff
+    const staffQuery = pool.query(
+      "SELECT COUNT(*) FROM staff WHERE workspace_id = $1 AND status = 'Active'", 
+      [workspaceId]
+    );
+
+    const [bookings, pendingBookings, lowStock, messages, forms, staff] = await Promise.all([
+        bookingsQuery, pendingBookingsQuery, lowStockQuery, messagesQuery, formsQuery, staffQuery
+    ]);
 
     res.json({
       upcoming_bookings: parseInt(bookings.rows[0].count),
+      pending_bookings: parseInt(pendingBookings.rows[0].count), // NEW
       low_stock_items: parseInt(lowStock.rows[0].count),
-      unread_messages: parseInt(messages.rows[0].count)
+      unread_messages: parseInt(messages.rows[0].count),
+      pending_forms: parseInt(forms.rows[0].count), // NEW
+      active_staff: parseInt(staff.rows[0].count)
     });
   } catch (err) {
     console.error(err.message);
@@ -411,6 +444,40 @@ app.put('/api/bookings/:id/status', async (req, res) => {
     console.error(err);
     res.status(500).json({ error: "Failed to update status" });
   }
+});
+
+// 16. GET STAFF LIST
+app.get('/api/staff/:workspaceId', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM staff WHERE workspace_id = $1 ORDER BY id ASC', [req.params.workspaceId]);
+    res.json(result.rows);
+  } catch (err) { res.status(500).send("Server Error"); }
+});
+
+// 17. INVITE STAFF
+app.post('/api/staff', async (req, res) => {
+  const { workspace_id, name, email, role, permissions } = req.body;
+  try {
+    const result = await pool.query(
+      `INSERT INTO staff (workspace_id, name, email, role, permissions, status) VALUES ($1, $2, $3, $4, $5, 'Invited') RETURNING *`,
+      [workspace_id, name, email, role, permissions]
+    );
+    // Send Invitation Email Logic Here (Mocked)
+    console.log(`📧 Invitation sent to ${email}`);
+    res.json(result.rows[0]);
+  } catch (err) { res.status(500).send("Failed to invite staff"); }
+});
+
+// 18. UPDATE STAFF PERMISSIONS
+app.put('/api/staff/:id', async (req, res) => {
+  const { permissions, role } = req.body;
+  try {
+    const result = await pool.query(
+      `UPDATE staff SET permissions = $1, role = COALESCE($2, role) WHERE id = $3 RETURNING *`,
+      [permissions, role, req.params.id]
+    );
+    res.json(result.rows[0]);
+  } catch (err) { res.status(500).send("Failed to update staff"); }
 });
 
 app.listen(port, () => {
