@@ -192,6 +192,7 @@ app.put('/api/inventory/:id', async (req, res) => {
   }
 });
 
+// 8. Remind
 app.post('/api/bookings/:id/remind', async (req, res) => {
   const { type } = req.body; 
   try {
@@ -204,12 +205,11 @@ app.post('/api/bookings/:id/remind', async (req, res) => {
     );
 
     if (bookingRes.rows.length === 0) return res.status(404).json({ error: "Booking not found" });
-
     const booking = bookingRes.rows[0];
-    
-    // Convert DB timestamp directly to IST string
+
+    // FIX: Parse the database string without letting the server add a timezone offset
     const dateStr = new Date(booking.start_time).toLocaleString('en-IN', { 
-        timeZone: 'Asia/Kolkata', 
+        timeZone: 'UTC', // Treating the DB time as the "target" time directly
         weekday: 'long', 
         year: 'numeric', 
         month: 'long', 
@@ -220,8 +220,6 @@ app.post('/api/bookings/:id/remind', async (req, res) => {
     });
 
     const intakeFormUrl = `${CLIENT_URL}/form/${booking.id}`;
-    
-    // Calendar URL logic using the exact start_time
     const startTime = new Date(booking.start_time);
     const formatGCalTime = (date) => date.toISOString().replace(/-|:|\.\d\d\d/g, "");
     const gCalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(booking.service_type)}&dates=${formatGCalTime(startTime)}/${formatGCalTime(startTime)}&details=${encodeURIComponent("Intake Form: " + intakeFormUrl)}`;
@@ -238,16 +236,15 @@ app.post('/api/bookings/:id/remind', async (req, res) => {
               </div>
               <div style="padding: 32px 24px;">
                 <p style="font-size: 16px; color: #374151; margin-top: 0;">Hi <strong>${booking.name}</strong>,</p>
-                <p style="font-size: 16px; color: #374151;">Your appointment is officially scheduled.</p>
                 <div style="background-color: #f3f4f6; padding: 20px; border-radius: 12px; margin: 24px 0; text-align: center; border: 1px solid #e5e7eb;">
-                  <p style="margin: 0; font-size: 13px; color: #6b7280; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">Date & Time</p>
+                  <p style="margin: 0; font-size: 13px; color: #6b7280; text-transform: uppercase; font-weight: bold;">Date & Time</p>
                   <p style="margin: 8px 0 4px 0; font-size: 20px; color: #111827; font-weight: bold;">${dateStr}</p>
                   <p style="margin: 0; color: #2563eb; font-weight: 500;">${booking.service_type}</p>
                 </div>
-                <div style="margin-bottom: 20px; text-align: center;">
+                <div style="text-align: center;">
                   <a href="${intakeFormUrl}" style="display: inline-block; background-color: #2563eb; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">Complete Intake Form</a>
                 </div>
-                <div style="text-align: center;">
+                <div style="text-align: center; margin-top: 15px;">
                   <a href="${gCalUrl}" style="display: inline-block; background-color: #ffffff; color: #374151; padding: 12px 24px; text-decoration: none; border: 2px solid #e5e7eb; border-radius: 8px; font-weight: 600; font-size: 14px;">📅 Add to Google Calendar</a>
                 </div>
               </div>
@@ -257,7 +254,6 @@ app.post('/api/bookings/:id/remind', async (req, res) => {
     } 
     res.json({ success: true });
   } catch (err) {
-    console.error(err);
     res.status(500).send("Server Error");
   }
 });
@@ -341,6 +337,7 @@ app.post('/api/login', (req, res) => {
   }
 });
 
+// 11. Cancel
 app.put('/api/bookings/:id/cancel', async (req, res) => {
   const { id } = req.params;
   try {
@@ -351,9 +348,9 @@ app.put('/api/bookings/:id/cancel', async (req, res) => {
     const contactRes = await pool.query(`SELECT * FROM contacts WHERE id = $1`, [booking.contact_id]);
     const contact = contactRes.rows[0];
     
-    // Convert DB timestamp directly to IST string
+    // FIX: Match the UTC parsing to stop the +5:30 addition
     const bookingDate = new Date(booking.start_time).toLocaleString('en-IN', { 
-      timeZone: 'Asia/Kolkata', 
+      timeZone: 'UTC', 
       weekday: 'short', 
       year: 'numeric', 
       month: 'short', 
@@ -371,11 +368,9 @@ app.put('/api/bookings/:id/cancel', async (req, res) => {
           html: `
             <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e5e7eb; border-radius: 12px;">
               <h2 style="color: #dc2626; text-align: center;">Appointment Cancelled</h2>
-              <p style="text-align: center; color: #4b5563;">Hi <strong>${contact.name}</strong>,</p>
               <p style="text-align: center; color: #4b5563;">
                 Your appointment for <strong>${booking.service_type}</strong> on <strong>${bookingDate}</strong> has been cancelled.
               </p>
-              <p style="text-align: center; color: #9ca3af; font-size: 14px;">Regards,<br/>CareOps Team</p>
             </div>`
         };
         await sgMail.send(msg);
