@@ -15,7 +15,7 @@ export default function InventoryPage() {
   const WORKSPACE_ID = 1;
 
   useEffect(() => {
-    axios.get(`http://localhost:5000/api/inventory/${WORKSPACE_ID}`)
+    axios.get(`${API_URL}/api/inventory/${WORKSPACE_ID}`)
       .then(res => {
         const sortedData = res.data.sort((a, b) => a.item_name.localeCompare(b.item_name));
         setInventory(sortedData);

@@ -64,7 +64,7 @@ export default function InventoryDetailPage() {
 
   // UPDATED: Fetch from specific item endpoint to get stats like monthly_usage
   const fetchItem = () => {
-    axios.get(`http://localhost:5000/api/inventory/item/${id}`) 
+    axios.get(`${API_URL}/api/inventory/item/${id}`) 
       .then(res => {
         const data = res.data;
         setItem(data);
@@ -91,7 +91,7 @@ export default function InventoryDetailPage() {
 
   const handleRestock = () => {
     if (restockAmount <= 0) return;
-    axios.post(`http://localhost:5000/api/inventory/${id}/restock`, { amount: parseInt(restockAmount) })
+    axios.post(`${API_URL}/api/inventory/${id}/restock`, { amount: parseInt(restockAmount) })
       .then(() => {
         setItem(prev => ({ ...prev, quantity: prev.quantity + parseInt(restockAmount) }));
         const newActivity = {
@@ -107,7 +107,7 @@ export default function InventoryDetailPage() {
   };
 
   const handleUpdateSettings = () => {
-    axios.put(`http://localhost:5000/api/inventory/${id}`, { 
+    axios.put(`${API_URL}/api/inventory/${id}`, { 
         low_stock_threshold: parseInt(newThreshold),
         target_capacity: parseInt(newTarget)
     })

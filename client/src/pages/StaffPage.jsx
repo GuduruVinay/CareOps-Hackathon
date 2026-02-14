@@ -23,7 +23,7 @@ export default function StaffPage() {
 
   const fetchStaff = async () => {
     try {
-      const res = await axios.get(`http://localhost:5000/api/staff/${WORKSPACE_ID}`);
+      const res = await axios.get(`${API_URL}/api/staff/${WORKSPACE_ID}`);
       setStaff(res.data);
       setLoading(false);
     } catch (err) {
@@ -36,7 +36,7 @@ export default function StaffPage() {
     e.preventDefault();
     try {
       const defaultPerms = { inbox: true, bookings: true, forms: true, inventory: false };
-      await axios.post(`http://localhost:5000/api/staff`, { 
+      await axios.post(`${API_URL}/api/staff`, { 
         workspace_id: WORKSPACE_ID,
         ...newStaff,
         permissions: defaultPerms
@@ -57,7 +57,7 @@ export default function StaffPage() {
     setStaff(prev => prev.map(s => s.id === user.id ? { ...s, permissions: updatedPerms } : s));
 
     try {
-      await axios.put(`http://localhost:5000/api/staff/${user.id}`, { permissions: updatedPerms });
+      await axios.put(`${API_URL}/api/staff/${user.id}`, { permissions: updatedPerms });
       toast.success('Permissions updated');
     } catch (err) {
       toast.error('Failed to update');

@@ -29,7 +29,7 @@ export default function BookingsPage() {
   const WORKSPACE_ID = 1;
 
   const fetchBookings = () => {
-    axios.get(`http://localhost:5000/api/bookings/${WORKSPACE_ID}`)
+    axios.get(`${API_URL}/api/bookings/${WORKSPACE_ID}`)
       .then(response => {
         const sorted = response.data.sort((a, b) => new Date(b.start_time) - new Date(a.start_time));
         setBookings(sorted);
@@ -84,7 +84,7 @@ export default function BookingsPage() {
   };
 
   const handleRemind = async (booking) => {
-      const promise = axios.post(`http://localhost:5000/api/bookings/${booking.id}/remind`, { type: 'email' });
+      const promise = axios.post(`${API_URL}/api/bookings/${booking.id}/remind`, { type: 'email' });
       toast.promise(promise, {
         loading: 'Sending reminder...',
         success: (res) => (
@@ -132,9 +132,9 @@ export default function BookingsPage() {
 
     try {
         if (action === 'CANCEL') {
-            await axios.put(`http://localhost:5000/api/bookings/${booking.id}/cancel`);
+            await axios.put(`${API_URL}/api/bookings/${booking.id}/cancel`);
         } else {
-            await axios.put(`http://localhost:5000/api/bookings/${booking.id}/status`, { status: newStatus });
+            await axios.put(`${API_URL}/api/bookings/${booking.id}/status`, { status: newStatus });
         }
         toast.success(`Booking marked as ${newStatus.toLowerCase().replace('_', ' ')}`);
         fetchBookings();

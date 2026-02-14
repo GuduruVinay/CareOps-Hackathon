@@ -24,7 +24,7 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const res = await axios.get(`http://localhost:5000/api/dashboard/${WORKSPACE_ID}`);
+        const res = await axios.get(`${API_URL}/api/dashboard/${WORKSPACE_ID}`);
         setStats({
           bookings: res.data.upcoming_bookings,
           pendingBookings: res.data.pending_bookings,

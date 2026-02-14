@@ -140,7 +140,7 @@ export default function AIAssistant({ context = 'customer' }) {
 
     // 3. Call Server API
     try {
-      const res = await axios.get(`http://localhost:5000/api/assistant`, {
+      const res = await axios.get(`${API_URL}/api/assistant`, {
         params: { query, context }
       });
       

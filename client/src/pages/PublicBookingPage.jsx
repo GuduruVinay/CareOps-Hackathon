@@ -145,14 +145,14 @@ export default function PublicBookingForm() {
 
     try {
       // 2. Create Booking
-      const res = await axios.post('http://localhost:5000/api/bookings', {
+      const res = await axios.post(`${API_URL}/api/bookings`, {
         workspace_id: 1,
         ...formData,
         start_time: localDateString, // Send "2026-02-15T09:00:00" directly
       });
 
       // 3. Trigger Email
-      await axios.post(`http://localhost:5000/api/bookings/${res.data.id}/remind`, { type: 'email' });
+      await axios.post(`${API_URL}/api/bookings/${res.data.id}/remind`, { type: 'email' });
 
       setStep(4);
       setStatus('success');
