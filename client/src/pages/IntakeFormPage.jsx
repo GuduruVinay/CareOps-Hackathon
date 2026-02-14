@@ -4,6 +4,7 @@ import axios from 'axios';
 import { CheckCircle, Activity, Calendar, User, FileText, AlertTriangle } from 'lucide-react';
 import LoadingThrobber from '../components/LoadingThrobber';
 import ThemeToggle from '../components/ThemeToggle'; // ✅ Imported ThemeToggle
+import { API_URL } from '../../config';
 
 export default function IntakeFormPage() {
   const { id } = useParams();
@@ -20,7 +21,7 @@ export default function IntakeFormPage() {
   });
 
   useEffect(() => {
-    axios.get(`http://localhost:5000/api/booking/${id}`)
+    axios.get(`${API_URL}/api/booking/${id}`)
       .then(res => {
         if (!res.data || !res.data.id) {
             throw new Error("Booking not found");
@@ -38,7 +39,7 @@ export default function IntakeFormPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.post(`http://localhost:5000/api/bookings/${id}/intake`, formData);
+      await axios.post(`${API_URL}/api/bookings/${id}/intake`, formData);
       setSubmitted(true);
     } catch (err) {
       alert("Failed to submit form. Please try again.");

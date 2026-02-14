@@ -7,6 +7,8 @@ const cors = require('cors');
 const sgMail = require('@sendgrid/mail');
 const twilio = require('twilio');
 
+const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
+
 if (process.env.SENDGRID_API_KEY) {
   sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 } else {
@@ -214,7 +216,7 @@ app.post('/api/bookings/:id/remind', async (req, res) => {
         hour: 'numeric', minute: '2-digit', hour12: true 
     });
 
-    const intakeFormUrl = `http://localhost:3000/form/${booking.id}`;
+    const intakeFormUrl = `${CLIENT_URL}/form/${booking.id}`;
     
     // Calendar Logic
     const startTime = new Date(booking.start_time);

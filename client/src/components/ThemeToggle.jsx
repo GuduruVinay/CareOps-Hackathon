@@ -6,7 +6,7 @@ export default function ThemeToggle({ className }) {
 
   return (
     <button
-      onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+      onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
       // If a custom className is passed, use it. Otherwise, use the default gray styles.
       className={className || `
         p-2 rounded-lg transition-colors duration-200 
