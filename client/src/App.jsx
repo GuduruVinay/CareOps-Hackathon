@@ -1,12 +1,12 @@
 import { Routes, Route, BrowserRouter } from 'react-router-dom';
 import ProtectedRoute from './components/ProtectedRoute';
 import Dashboard from './components/Dashboard';
-import BookingForm from './components/BookingForm';
 import BookingsPage from './pages/BookingsPage';
 import InventoryPage from './pages/InventoryPage';
 import InventoryDetailPage from './pages/InventoryDetailPage';
 import InboxPage from './pages/InboxPage';
 import LoginPage from './pages/LoginPage';
+import PublicBookingPage from './pages/PublicBookingPage';
 
 function App() {
   return (
@@ -14,7 +14,7 @@ function App() {
       <Routes>
         {/* PUBLIC ROUTE */}
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/book" element={<BookingForm />} />
+        <Route path="/book" element={<PublicBookingPage />} />
 
         {/* PROTECTED ADMIN ROUTES */}
         <Route path="/" element={
