@@ -50,17 +50,14 @@ cd server
 npm install
 
 Create a .env file in /server:
+
 PORT=5000
-DATABASE_URI=postgres://postgres.[PROJECT_REF]:[PASSWORD]@aws-0-[REGION].pooler.supabase.com:6543/postgres
 CLIENT_URL=http://localhost:5173
-SENDGRID_API_KEY=SG.your_sendgrid_key_here
-SENDGRID_FROM_EMAIL=verified_sender@yourdomain.com
 ADMIN_EMAIL=admin@careops.com
 ADMIN_PASSWORD=admin123
 
 Start the backend development server:
 npm run dev
-# Or: node index.js
 
 3. Frontend Setup
 Open a new terminal session:
